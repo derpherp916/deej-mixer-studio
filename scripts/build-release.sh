@@ -8,6 +8,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="${VERSION:-$(grep -oP 'var AppVersion = "\K[^"]+' "$ROOT/app/icon.go")}"
 DIST="$ROOT/dist"; rm -rf "$DIST"; mkdir -p "$DIST"
 echo "== Deej Mixer Studio $VERSION =="
+if [ -n "${UPDATE_PUBKEY:-}" ] && [ -z "${UPDATE_SIGNING_KEY:-}" ]; then
+  echo "UPDATE_PUBKEY is set but UPDATE_SIGNING_KEY is not: the apps would refuse this release. Add the secret." >&2; exit 1
+fi
 
 echo "-- firmware"
 bash "$ROOT/firmware/build_fw.sh"
@@ -32,7 +35,9 @@ echo "-- app tests"
 
 echo "-- DeejMixer.exe"
 (cd "$ROOT/app" && GOOS=windows GOARCH=amd64 go vet -unsafeptr=false . && \
-  GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.AppVersion=$VERSION" -o "$DIST/DeejMixer.exe" .)
+  GOOS=windows GOARCH=amd64 go build -trimpath -o "$DIST/DeejMixer.exe" \
+    -ldflags "-H=windowsgui -s -w -X main.AppVersion=$VERSION -X main.UpdateRepo=${UPDATE_REPO:-} -X main.UpdatePubKey=${UPDATE_PUBKEY:-}" .)
+if [ -n "${UPDATE_REPO:-}" ]; then echo "   update source: github.com/$UPDATE_REPO (signed releases only: $([ -n "${UPDATE_PUBKEY:-}" ] && echo yes || echo no))"; fi
 
 echo "-- payload"
 P="$ROOT/installer/payload"; rm -rf "$P"; mkdir -p "$P/tools" "$P/drivers/ch341" "$P/firmware/DeejMixer" "$P/licenses" "$P/third-party-source"
@@ -52,4 +57,8 @@ echo "-- portable zip"
 (cd "$ROOT/installer" && cp -r payload "DeejMixer-$VERSION" && zip -qr9 "$DIST/DeejMixer-$VERSION-portable.zip" "DeejMixer-$VERSION" && rm -rf "DeejMixer-$VERSION")
 cp "$ROOT/firmware/build/DeejMixer.hex" "$DIST/DeejMixer-firmware-$VERSION.hex"
 (cd "$DIST" && sha256sum * > SHA256SUMS.txt)
+if [ -n "${UPDATE_SIGNING_KEY:-}" ]; then
+  (cd "$ROOT/tools/updsign" && go run . sign "$DIST/SHA256SUMS.txt")
+  if [ -n "${UPDATE_PUBKEY:-}" ]; then (cd "$ROOT/tools/updsign" && go run . verify "$UPDATE_PUBKEY" "$DIST/SHA256SUMS.txt"); fi
+fi
 echo "== done: $DIST =="; ls -la "$DIST"

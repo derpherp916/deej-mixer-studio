@@ -206,6 +206,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
       <div class="sub" id="csub">Searching…</div>
       <div class="sub" id="cgame"></div>
     </div>
+    <button class="btn" id="updPill" style="display:none;margin-top:10px;justify-content:center;border-color:#2f9bff66;color:#9fd0ff">Update available</button>
     <div class="ver" id="ver"></div>
   </aside>
 
@@ -305,6 +306,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
             <div class="trow"><div class="tl"><b>Start with Windows</b><small>Runs quietly in the system tray</small></div><button class="toggle" id="startup"></button></div>
             <div class="trow" style="border-top:1px solid var(--line)"><div class="tl"><b id="installTitle">Install</b><small id="installHint"></small></div><button class="btn" id="install">Install</button></div>
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" id="drivers">Install CH340 USB driver</button><button class="btn" id="openData">Open settings folder</button><button class="btn danger" id="restoreDefaults">Reset profile to defaults</button></div>
+          </div>
+          <div class="card"><h3>Updates</h3><p class="desc" id="updLine">Checking…</p>
+            <div class="trow"><div class="tl"><b>Check automatically</b><small>When Windows starts, then once a day. You get one quiet notification per new version.</small></div><button class="toggle" id="updAuto"></button></div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button class="btn" id="updCheck">Check now</button><button class="btn primary" id="updInstall" style="display:none">Install update</button><span class="hint" id="updProg"></span></div>
+            <div class="log selectable" id="updNotes" style="margin-top:12px;max-height:160px;display:none"></div>
           </div>
           <div class="card"><h3>Activity</h3><div class="log selectable" id="activity" style="height:200px"></div></div>
         </div>
@@ -784,6 +790,28 @@ $("uploadStock").onclick = uploadStock; $("fwBannerBtn").onclick = uploadStock;
 $("restoreDefaults").onclick = async () => { if (!await dialog({title: `Reset “${S.activeProfile}” to defaults?`, text: "Knob targets, button actions and lighting go back to the original setup.", ok: "Reset", danger: true})) return;
   const d = await call("/api/defaults"); d.port = cfg.port; cfg = d; changed(true); };
 
+// ---------- app updates ----------
+let upd = null, updTimer = null;
+async function updRefresh(body) {
+  try { upd = await call("/api/updates", body); } catch (e) { toast(e.message, true); return; }
+  const U = upd;
+  $("updLine").textContent = !U.enabled ? `Version ${U.current}. Automatic updates are off in this build (no release source).` :
+    U.checking ? "Checking for updates…" : U.error ? U.error :
+    U.available ? `Version ${U.latest} is available — you have ${U.current}.` :
+    U.latest ? `You're up to date (version ${U.current}).` : `Version ${U.current}.`;
+  if (U.lastCheck && U.enabled && !U.checking) $("updLine").textContent += "  Last checked " + new Date(U.lastCheck).toLocaleString() + ".";
+  toggle($("updAuto"), U.autoCheck, v => updRefresh({action: "auto", on: v}));
+  $("updAuto").disabled = $("updCheck").disabled = !U.enabled;
+  $("updInstall").style.display = U.available ? "" : "none"; $("updInstall").disabled = U.downloading;
+  $("updProg").textContent = U.downloading ? `Downloading… ${U.progress}%` : "";
+  $("updNotes").style.display = U.available && U.notes ? "" : "none"; $("updNotes").textContent = U.notes ? "What's new in " + U.latest + ":\n\n" + U.notes : "";
+  $("updPill").style.display = U.available ? "" : "none"; $("updPill").textContent = `⬆ Update ${U.latest} available`;
+  clearTimeout(updTimer); updTimer = setTimeout(() => updRefresh(), U.checking || U.downloading ? 1000 : 60000);
+}
+$("updCheck").onclick = () => updRefresh({action: "check"});
+$("updInstall").onclick = async () => { if (await dialog({title: `Install Deej Mixer ${upd.latest}?`, text: "The update downloads, Windows asks for permission, and Deej Mixer restarts in a few seconds. Your profiles and settings are kept.", ok: "Install"})) updRefresh({action: "install"}); };
+$("updPill").onclick = () => go("settings");
+
 // ---------- live updates ----------
 function updateLive() {
   const L = live; if (!L || !cfg) return;
@@ -832,7 +860,7 @@ function connectEvents() {
   devs.dev = drawDevice($("devSvg"), "dev"); devs.led = drawDevice($("ledSvg"), "led"); devs.diag = drawDevice($("diagSvg"), "diag");
   renderProfiles(); renderAll();
   $("savestate").textContent = "✓ All changes saved";
-  connectEvents();
+  connectEvents(); updRefresh();
   go({test: "diag"}[location.hash.slice(1)] || location.hash.slice(1) || "device");
 })();
 </script>

@@ -29,6 +29,11 @@ func TestUIDemo(t *testing.T) {
 		return nil
 	})
 	srv = NewServer(eng, defaultStore(), dir, Hooks{StartupEnabled: func() bool { return true }, IsInstalled: func() bool { return false }}, studio)
+	gh := newFakeGitHub(t, "v2.1.0", nil)
+	withUpdateConfig(t, gh.srv.URL, "me/deej-mixer-studio", "")
+	up := NewUpdater(dir, nil, func(string) error { return nil })
+	up.Check(false)
+	srv.SetUpdater(up)
 	l, err := srv.Listen()
 	if err != nil {
 		t.Fatal(err)

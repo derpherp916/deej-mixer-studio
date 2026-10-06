@@ -46,6 +46,10 @@
 
 Silent install: `DeejMixer-Setup-x.y.z.exe /S`. A portable zip is also attached to each release.
 
+### Updates
+
+Installed copies check this repository's latest GitHub Release when Windows starts and then once a day. A new version produces a single, quiet Windows notification. **Settings → Updates → Install update** downloads it, verifies the checksum and the optional ed25519 signature, and installs it silently. Giving a mixer as a gift? See [docs/GIFTING.md](docs/GIFTING.md).
+
 ## Hardware
 
 | Part | Qty |

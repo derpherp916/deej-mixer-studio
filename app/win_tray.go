@@ -44,6 +44,11 @@ const (
 	wmUpdateTip   = wmApp + 2
 	wmQuit        = wmApp + 3
 	wmOpenUI      = wmApp + 4
+	wmNotify      = wmApp + 5
+	nifInfo       = 0x10
+	niifInfo      = 0x1
+	niifQuiet     = 0x80 // NIIF_RESPECT_QUIET_TIME: stays silent during Focus Assist / quiet hours
+	ninBalloonClk = 0x405
 	nimAdd        = 0
 	nimModify     = 1
 	nimDelete     = 2
@@ -107,13 +112,15 @@ type msg struct {
 }
 
 type tray struct {
-	hwnd           uintptr
-	icon           uintptr
-	taskbarCreated uint32
-	onOpen         func(page string)
-	mu             sync.Mutex
-	tip            string
-	nid            notifyIconData
+	noteTitle, noteText string
+	notePage            string
+	hwnd                uintptr
+	icon                uintptr
+	taskbarCreated      uint32
+	onOpen              func(page string)
+	mu                  sync.Mutex
+	tip                 string
+	nid                 notifyIconData
 }
 
 var theTray *tray
@@ -125,6 +132,16 @@ func requestQuit() {
 }
 
 // SetTip updates the hover text from any goroutine.
+// Notify shows one Windows notification from the tray icon (any goroutine). Clicking it opens `page`.
+func (t *tray) Notify(title, text, page string) {
+	t.mu.Lock()
+	t.noteTitle, t.noteText, t.notePage = title, text, page
+	t.mu.Unlock()
+	if t.hwnd != 0 {
+		procPostMessageW.Call(t.hwnd, wmNotify, 0, 0)
+	}
+}
+
 func (t *tray) SetTip(s string) {
 	t.mu.Lock()
 	changed := t.tip != s
@@ -160,6 +177,11 @@ func (t *tray) wndProc(hwnd, msgID, wp, lp uintptr) uintptr {
 		switch uint32(lp) & 0xFFFF {
 		case wmLButtonUp:
 			t.onOpen("")
+		case ninBalloonClk:
+			t.mu.Lock()
+			page := t.notePage
+			t.mu.Unlock()
+			t.onOpen(page)
 		case wmRButtonUp:
 			t.showMenu()
 		}
@@ -181,6 +203,17 @@ func (t *tray) wndProc(hwnd, msgID, wp, lp uintptr) uintptr {
 		return 0
 	case m == wmOpenUI:
 		t.onOpen("")
+		return 0
+	case m == wmNotify:
+		t.mu.Lock()
+		title, text := t.noteTitle, t.noteText
+		t.mu.Unlock()
+		n := t.nid
+		copy(n.InfoTitle[:63], syscall.StringToUTF16(title))
+		copy(n.Info[:255], syscall.StringToUTF16(text))
+		n.InfoFlags = niifInfo | niifQuiet
+		n.Flags = nifInfo
+		procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&n)))
 		return 0
 	case m == wmQuit:
 		procDestroyWindow.Call(hwnd)

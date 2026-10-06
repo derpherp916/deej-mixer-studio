@@ -12,6 +12,19 @@ $owner = gh api user --jq .login
 # GitHub Pages from the docs/ folder of main
 gh api -X POST "repos/$owner/$Name/pages" -f "source[branch]=main" -f "source[path]=/docs" 2>$null | Out-Null
 gh repo edit "$owner/$Name" --homepage "https://$owner.github.io/$Name/" --add-topic deej,arduino,volume-mixer,windows,ws2812b,macropad
+# Release signing: the app only installs updates signed with this key. The private key goes straight
+# into a GitHub secret and is never written to disk.
+if (Get-Command go -ErrorAction SilentlyContinue) {
+  $keys = go run ./tools/updsign keygen
+  $priv = ($keys | Select-String "PRIVATE").ToString().Split(":")[1].Trim()
+  $pub  = ($keys | Select-String "PUBLIC").ToString().Split(":")[1].Trim()
+  $priv | gh secret set UPDATE_SIGNING_KEY --repo "$owner/$Name"
+  gh variable set UPDATE_PUBKEY --body $pub --repo "$owner/$Name"
+  Write-Host "Release signing is on."
+} else {
+  Write-Host "Go is not installed, so release signing was skipped (updates are still checked with SHA-256)."
+  Write-Host "To turn it on later: winget install GoLang.Go, then see tools/updsign/main.go."
+}
 # First release: GitHub Actions builds the installer and attaches it
 git tag v2.0.0
 git push origin v2.0.0

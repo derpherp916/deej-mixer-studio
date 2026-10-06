@@ -90,11 +90,20 @@ func main() {
 	var srv *Server
 	var eng *Engine
 	lastTip := ""
+	fwNotified := false
 	eng = NewEngine(winPlatform{}, cfg, func(s Snapshot) {
 		srv.Publish(s)
 		tip := "Deej Mixer – not connected"
 		if s.Connected {
 			tip = "Deej Mixer – connected (" + s.Port + ")"
+		}
+		if !fwNotified && theTray != nil {
+			for _, r := range s.ProbeReport {
+				if strings.Contains(r, "Upload firmware") { // the mixer runs older firmware than this app
+					fwNotified = true
+					theTray.Notify("Mixer firmware update ready", "Click to update your Deej Mixer's firmware (about 10 seconds).", "settings")
+				}
+			}
 		}
 		if tip != lastTip && theTray != nil {
 			lastTip = tip
@@ -116,6 +125,15 @@ func main() {
 		OpenDrivers:    openDrivers,
 		OpenPath:       func(p string) error { return shellOpen(p, "") },
 	}, studio)
+	updater := NewUpdater(dir, func(title, text string) {
+		if theTray != nil {
+			theTray.Notify(title, text, "settings")
+		}
+	}, func(setup string) error {
+		// Silent update: the installer closes this app, replaces it (settings are kept) and restarts it.
+		return shellExec("runas", setup, "/S")
+	})
+	srv.SetUpdater(updater)
 	l, err := srv.Listen()
 	if err != nil {
 		messageBox("Deej Mixer could not start its control panel: "+err.Error(), "Deej Mixer", 0x10)
@@ -132,6 +150,7 @@ func main() {
 	stop := make(chan struct{})
 	done := make(chan struct{})
 	go func() { eng.Run(stop); close(done) }()
+	go updater.Run(stop)
 
 	open := func(page string) { // runs on the tray thread
 		u := srv.URL()

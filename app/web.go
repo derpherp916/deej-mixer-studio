@@ -43,7 +43,8 @@ type Server struct {
 	token   string
 	addr    string
 
-	studio *Studio
+	studio  *Studio
+	updater *Updater
 
 	mu       sync.Mutex
 	profiles *ProfileStore
@@ -97,6 +98,7 @@ func (s *Server) Serve(l net.Listener) error {
 	mux.HandleFunc("/api/command", s.api(s.postCommand))
 	mux.HandleFunc("/api/report", s.api(s.postReport))
 	mux.HandleFunc("/api/profile", s.api(s.postProfile))
+	mux.HandleFunc("/api/updates", s.api(s.updates))
 	mux.HandleFunc("/api/studio/sketch", s.apiN(s.studioSketch, 600<<10))
 	mux.HandleFunc("/api/studio/build", s.api(s.studioBuild))
 	mux.HandleFunc("/api/studio/job", s.api(s.studioJob))
@@ -426,4 +428,35 @@ func (s *Server) studioMonitor(r *http.Request) (any, error) {
 	}
 	lines, seq := s.engine.MonitorSince(q.Since)
 	return map[string]any{"lines": lines, "seq": seq}, nil
+}
+
+// SetUpdater connects the release checker (optional).
+func (s *Server) SetUpdater(u *Updater) { s.updater = u }
+
+func (s *Server) updates(r *http.Request) (any, error) {
+	if s.updater == nil {
+		return UpdateState{Current: AppVersion}, nil
+	}
+	if r.Method == http.MethodPost {
+		var q struct {
+			Action string `json:"action"` // check, install, auto
+			On     bool   `json:"on"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&q); err != nil {
+			return nil, err
+		}
+		switch q.Action {
+		case "check":
+			if _, err := s.updater.Check(false); err != nil {
+				return nil, err
+			}
+		case "install":
+			go s.updater.Install()
+		case "auto":
+			s.updater.SetAutoCheck(q.On)
+		default:
+			return nil, fmt.Errorf("unknown update action")
+		}
+	}
+	return s.updater.State(), nil
 }

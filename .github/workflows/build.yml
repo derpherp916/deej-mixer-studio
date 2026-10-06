@@ -30,6 +30,10 @@ jobs:
             libsimavr-dev libelf-dev binutils-mingw-w64-x86-64 nsis zip unzip
 
       - name: Build and test
+        env:
+          UPDATE_REPO: ${{ github.repository }}           # the app checks this repo's releases for updates
+          UPDATE_PUBKEY: ${{ vars.UPDATE_PUBKEY }}        # optional: only accept releases signed with...
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}  # ...this key (see tools/updsign)
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then export VERSION="${GITHUB_REF_NAME#v}"; fi
           ./scripts/build-release.sh
