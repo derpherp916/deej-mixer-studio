@@ -1,0 +1,8 @@
+dist/
+firmware/build/
+installer/payload/
+installer/app.ico
+installer/*.exe
+editor/node_modules/
+app/deejmixer
+*.log

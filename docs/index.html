@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deej Mixer Studio</title>
+<meta name="description" content="A five-knob, six-button USB desk mixer for Windows with per-app volume, macro buttons, LED lighting and a built-in Arduino firmware editor.">
+<link rel="icon" href="favicon.ico">
+<meta property="og:title" content="Deej Mixer Studio">
+<meta property="og:description" content="Per-app volume knobs, macro buttons and lighting for Windows, with a built-in Arduino firmware editor.">
+<meta property="og:image" content="img/device.png">
+<style>
+:root{--bg:#0b0d12;--s1:#12151c;--s2:#181c25;--line:#252b37;--text:#e8eaef;--muted:#8a93a3;--acc:#2f9bff;--acc2:#7b61ff}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif}
+a{color:#9fd0ff;text-decoration:none}a:hover{text-decoration:underline}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+header.nav{position:sticky;top:0;z-index:10;background:#0b0d12d9;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.nav .wrap{display:flex;align-items:center;gap:18px;height:62px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:2px;color:var(--text)}
+.logo:hover{text-decoration:none}
+header.nav nav{margin-left:auto;display:flex;gap:22px;font-size:14.5px}
+header.nav nav a{color:var(--muted)}header.nav nav a:hover{color:var(--text);text-decoration:none}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:12px 22px;border-radius:12px;font-weight:600;border:1px solid var(--line);background:var(--s2);color:var(--text)}
+.btn:hover{text-decoration:none;border-color:#3d4556}
+.btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2));border:0;color:#fff;box-shadow:0 10px 40px #2f9bff40}
+.hero{padding:84px 0 40px;text-align:center;background:radial-gradient(ellipse 70% 60% at 50% 0%,#1d2a48 0%,transparent 70%)}
+.eyebrow{display:inline-block;padding:5px 14px;border:1px solid var(--line);border-radius:30px;color:var(--muted);font-size:13px;margin-bottom:22px}
+h1{font-size:clamp(38px,6vw,64px);line-height:1.05;margin:0 0 18px;letter-spacing:-1.5px}
+h1 span{background:linear-gradient(135deg,#7cc4ff,#a594ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{max-width:680px;margin:0 auto 32px;color:var(--muted);font-size:18.5px}
+.ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.shot{margin:56px auto 0;max-width:1100px;border-radius:16px;border:1px solid var(--line);overflow:hidden;box-shadow:0 40px 120px #000c,0 0 0 1px #ffffff08}
+.shot img{display:block;width:100%;height:auto}
+section{padding:80px 0;border-top:1px solid #ffffff08}
+h2{font-size:clamp(28px,4vw,40px);margin:0 0 12px;letter-spacing:-.6px}
+.sub{color:var(--muted);max-width:640px;margin:0 0 40px;font-size:17px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:22px}
+.card .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:#2f9bff1a;color:#9fd0ff;font-size:20px;margin-bottom:14px}
+.card h3{margin:0 0 6px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:15px}
+.split{display:grid;grid-template-columns:1fr 1.25fr;gap:40px;align-items:center}
+.split.rev{grid-template-columns:1.25fr 1fr}
+.split img{width:100%;border-radius:14px;border:1px solid var(--line);box-shadow:0 30px 80px #0009}
+ul.ticks{list-style:none;padding:0;margin:20px 0 0}ul.ticks li{padding:6px 0 6px 30px;position:relative;color:#c9cfd9}
+ul.ticks li::before{content:"✓";position:absolute;left:0;color:var(--acc);font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+td code,p code,li code{background:var(--s2);padding:2px 7px;border-radius:6px;font-size:14px}
+.note{background:#ffb02014;border:1px solid #ffb02040;border-radius:12px;padding:14px 18px;color:#ffd38a;font-size:15px;margin-top:20px}
+pre{background:#0a0c10;border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;font:13.5px/1.55 "Cascadia Code",Consolas,monospace;color:#c3cad6}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.steps .card{position:relative;padding-top:52px}
+.steps .card::before{counter-increment:s;content:counter(s);position:absolute;top:18px;left:22px;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-weight:700;font-size:14px}
+footer{padding:40px 0 60px;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+footer .wrap{display:flex;gap:20px;flex-wrap:wrap;justify-content:space-between}
+@media (max-width:900px){.grid,.steps{grid-template-columns:1fr}.split,.split.rev{grid-template-columns:1fr}header.nav nav{display:none}.hero{padding-top:56px}}
+</style>
+</head>
+<body>
+<header class="nav"><div class="wrap">
+  <a class="logo" href="#"><svg width="28" height="28" viewBox="0 0 34 34"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f9bff"/><stop offset="1" stop-color="#7b61ff"/></linearGradient></defs><path d="M6.7 27.3A14 14 0 1 1 27.3 27.3" fill="none" stroke="#323947" stroke-width="3.2" stroke-linecap="round"/><path d="M6.7 27.3A14 14 0 0 1 17 3" fill="none" stroke="url(#g)" stroke-width="3.2" stroke-linecap="round"/><circle cx="17" cy="17" r="8.5" fill="#20242d" stroke="#3d4556"/><rect x="16" y="9.8" width="2" height="6" rx="1" fill="#fff"/></svg>DEEJ MIXER STUDIO</a>
+  <nav><a href="#features">Features</a><a href="#studio">Firmware Studio</a><a href="#hardware">Hardware</a><a href="#install">Install</a><a class="repo" href="#">GitHub</a></nav>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <span class="eyebrow">Open source · Windows 10/11 · Arduino Nano</span>
+  <h1>Your desk mixer,<br><span>properly configured.</span></h1>
+  <p class="lead">Five knobs, six programmable buttons and LED lighting for per-app volume on Windows, with a configuration app that feels like the software for the gear you already own.</p>
+  <div class="ctas"><a class="btn primary dl" href="#">⬇ Download for Windows</a><a class="btn repo" href="#">View source on GitHub</a></div>
+  <div class="shot"><img src="img/device.png" alt="Deej Mixer Studio: device page with live knobs, LEDs and the inspector panel"></div>
+</div></div>
+
+<section id="features"><div class="wrap">
+  <h2>Everything on your desk, one knob away</h2>
+  <p class="sub">Click any knob or button on the live picture of your mixer to configure it. Changes save automatically to the active profile.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">🎚️</div><h3>Per-app volume</h3><p>Bind each knob to your speakers, microphone, system sounds, any app or group of apps, or everything else.</p></div>
+    <div class="card"><div class="ic">🎮</div><h3>Steam game knob</h3><p>Automatically follows the game you launched last from your Steam library, falling back to the Steam client.</p></div>
+    <div class="card"><div class="ic">🔘</div><h3>Press &amp; hold macros</h3><p>Each button gets two actions: mute a knob, mute the mic, launch an app or link, send a keyboard shortcut, or control media.</p></div>
+    <div class="card"><div class="ic">💡</div><h3>Lighting with meaning</h3><p>The ring shows the big knob's level, logo LEDs go dark when their app is muted, and the ring changes colour while your mic is muted.</p></div>
+    <div class="card"><div class="ic">🧩</div><h3>Profiles</h3><p>Keep Gaming, Work and Streaming setups, and switch between them from the title bar.</p></div>
+    <div class="card"><div class="ic">🩺</div><h3>Diagnostics</h3><p>A live hardware test for every button, knob and LED that catches shorted switches, loose wipers and LED order.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap split">
+  <div><h2>Buttons that do more</h2><p class="sub" style="margin-bottom:0">A short press mutes; holding opens the app. Or map a button to any shortcut, link or program.</p>
+    <ul class="ticks"><li>Mute any knob's target, or the microphone</li><li>Launch apps and links like <code>steam://open/main</code></li><li>Keyboard shortcuts such as <code>CTRL+SHIFT+M</code></li><li>Play/pause, next and previous track</li></ul></div>
+  <img src="img/buttons.png" alt="Button configuration">
+</div></section>
+
+<section><div class="wrap split rev">
+  <img src="img/lighting.png" alt="Lighting configuration">
+  <div><h2>Lighting you control</h2><p class="sub" style="margin-bottom:0">Pick a colour for the ring and each logo, or pick which knob each logo follows. Logo LEDs always run at full brightness, and the ring brightness stays within USB power limits.</p></div>
+</div></section>
+
+<section id="studio"><div class="wrap split">
+  <div><h2>Firmware Studio</h2><p class="sub" style="margin-bottom:0">An Arduino-IDE-style editor built into the app. Change the mixer's code and upload it without leaving the app.</p>
+    <ul class="ticks"><li>Syntax-highlighted C++ editor</li><li>Verify and Upload, with <code>Ctrl+R</code> / <code>Ctrl+U</code> / <code>Ctrl+S</code></li><li>Click a compiler error to jump to that line</li><li>Serial monitor, plus restore stock firmware</li><li>Uses your Arduino IDE tools, or downloads them on first use</li></ul></div>
+  <img src="img/studio.png" alt="Firmware Studio">
+</div></section>
+
+<section id="hardware"><div class="wrap">
+  <h2>Build the hardware</h2>
+  <p class="sub">Designed around the <a href="https://www.printables.com/model/867600">deej enclosure on Printables</a>. Facing the mixer, the big knob is on the left.</p>
+  <div class="split" style="align-items:start">
+    <table>
+      <tr><th>Nano pin</th><th>Connects to</th></tr>
+      <tr><td><b>A0</b></td><td>Big knob wiper</td></tr>
+      <tr><td><b>A1 → A4</b></td><td>Small knob wipers, from nearest to farthest</td></tr>
+      <tr><td><b>D2 – D5</b></td><td>Logo buttons: Opera, Steam, Discord, Spotify</td></tr>
+      <tr><td><b>D6 / D7</b></td><td>Small left / right buttons</td></tr>
+      <tr><td><b>D12</b></td><td>7-LED ring DIN (WS2812B)</td></tr>
+      <tr><td><b>D11</b></td><td>4 logo LEDs, chained DIN → DOUT</td></tr>
+      <tr><td><b>5V / GND</b></td><td>Pots, LED power and button ground</td></tr>
+    </table>
+    <div>
+      <table>
+        <tr><th>Part</th><th>Qty</th></tr>
+        <tr><td>Arduino Nano (ATmega328P)</td><td>1</td></tr>
+        <tr><td>10 kΩ linear potentiometer</td><td>5</td></tr>
+        <tr><td>Tactile push button</td><td>6</td></tr>
+        <tr><td>WS2812B LED</td><td>11</td></tr>
+        <tr><td>330–470 Ω resistor (LED data)</td><td>2</td></tr>
+        <tr><td>100–470 µF capacitor (LED power)</td><td>1</td></tr>
+      </table>
+      <div class="note">Wire buttons between their pin and GND using <b>diagonal legs</b> of 4-leg switches. Wire pots to <b>5V</b>, not VIN. Hold the Opera button while plugging in to run a wiring check with no PC.</div>
+    </div>
+  </div>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>Install in a minute</h2>
+  <p class="sub">One installer sets up the app, a Start-menu entry and the CH340 USB driver in Windows' own driver store.</p>
+  <div class="steps">
+    <div class="card"><h3>Run the installer</h3><p>Download <code>DeejMixer-Setup.exe</code> from Releases. Silent install: <code>/S</code>.</p></div>
+    <div class="card"><h3>Plug in the mixer</h3><p>Windows loads the driver automatically, and the app finds the mixer and turns green.</p></div>
+    <div class="card"><h3>Make it yours</h3><p>Click a knob or button to configure it, or open Diagnostics to test every part.</p></div>
+  </div>
+  <div class="ctas" style="justify-content:flex-start;margin-top:28px"><a class="btn primary dl" href="#">⬇ Latest release</a><a class="btn repo-build" href="#">Build from source</a></div>
+</div></section>
+
+<footer><div class="wrap">
+  <span>Deej Mixer Studio · MIT license · a fork of <a href="https://github.com/omriharel/deej">deej</a> by Omri Harel</span>
+  <span><a class="repo" href="#">GitHub</a> · <a class="issues" href="#">Report an issue</a></span>
+</div></footer>
+
+<script>
+// Works on any fork: <user>.github.io/<repo>/  ->  github.com/<user>/<repo>
+(function () {
+  var user = location.hostname.split(".")[0], repo = location.pathname.split("/").filter(Boolean)[0] || "deej-mixer-studio";
+  var base = /github\.io$/.test(location.hostname) ? "https://github.com/" + user + "/" + repo : "https://github.com/";
+  document.querySelectorAll("a.repo").forEach(function (a) { a.href = base; });
+  document.querySelectorAll("a.dl").forEach(function (a) { a.href = base + "/releases/latest"; });
+  document.querySelectorAll("a.repo-build").forEach(function (a) { a.href = base + "#building-from-source"; });
+  document.querySelectorAll("a.issues").forEach(function (a) { a.href = base + "/issues"; });
+})();
+</script>
+</body>
+</html>

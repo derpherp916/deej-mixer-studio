@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deej Mixer</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+:root{
+  --bg:#0b0d12;--rail:#0e1117;--s1:#12151c;--s2:#181c25;--s3:#1f2430;--line:#252b37;--line2:#323947;
+  --text:#e8eaef;--muted:#8a93a3;--dim:#5d6575;
+  --acc:#2f9bff;--acc2:#7b61ff;--accg:linear-gradient(135deg,#2f9bff,#7b61ff);
+  --ok:#2bd17e;--warn:#ffb020;--bad:#ff4d5e;--r:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  overflow:hidden;user-select:none;-webkit-user-select:none;cursor:default}
+input,textarea,.selectable,.cm-editor{user-select:text;-webkit-user-select:text}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#2a303c;border-radius:10px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#3a4252;background-clip:content-box;border:2px solid transparent}::-webkit-scrollbar-track{background:transparent}
+button{font:inherit;color:inherit}
+#app{display:grid;grid-template-columns:232px 1fr;height:100vh}
+
+/* ---------- rail ---------- */
+.rail{background:var(--rail);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 22px}
+.brand b{font-size:15px;letter-spacing:2.5px;font-weight:700}
+.brand small{display:block;color:var(--dim);font-size:10.5px;letter-spacing:1.5px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:0;border-radius:8px;background:none;color:var(--muted);text-align:left;cursor:pointer;font-weight:500}
+.nav button svg{width:18px;height:18px;flex:none;opacity:.85}
+.nav button:hover{background:var(--s2);color:var(--text)}
+.nav button.on{background:var(--s3);color:#fff;box-shadow:inset 3px 0 0 var(--acc)}
+.nav .sep{height:1px;background:var(--line);margin:10px 6px}
+.devcard{margin-top:auto;background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:12px}
+.devcard .row1{display:flex;align-items:center;gap:8px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 3px #ff4d5e22;flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px #2bd17e22}
+.devcard .sub{color:var(--muted);font-size:12px;margin-top:4px}
+.ver{color:var(--dim);font-size:11px;padding:10px 8px 0}
+
+/* ---------- main ---------- */
+.main{display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 26px;border-bottom:1px solid var(--line);background:var(--bg);min-height:62px}
+.topbar h1{font-size:18px;font-weight:600;margin:0;letter-spacing:.2px}
+.topbar .crumb{color:var(--dim);font-size:12px}
+.spacer{flex:1}
+.savestate{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}
+.savestate.err{color:var(--bad)}
+.content{flex:1;overflow:auto;padding:22px 26px 30px}
+.page{display:none}.page.on{display:block}
+.page.full.on{display:flex;flex-direction:column;height:100%}
+
+/* ---------- controls ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--line2);padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--s3);border-color:#3d4556}
+.btn svg{width:16px;height:16px}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.danger{color:#ff8a95}
+.btn.ghost{background:none;border-color:transparent}
+.btn.ghost:hover{background:var(--s2)}
+.btn:disabled{opacity:.45;pointer-events:none}
+.iconbtn{width:34px;height:34px;justify-content:center;padding:0}
+.field{margin-bottom:14px}
+.field>label,.lbl{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.input{width:100%;background:var(--s2);border:1px solid var(--line2);color:var(--text);border-radius:8px;padding:8px 11px;font:inherit;outline:none}
+.input:focus{border-color:var(--acc);box-shadow:0 0 0 3px #2f9bff26}
+.input.mono{font-family:"Cascadia Code",Consolas,monospace;font-size:12.5px}
+.select{position:relative}
+.select>.btn{width:100%;justify-content:space-between}
+.select>.btn span{overflow:hidden;text-overflow:ellipsis}
+.menu{position:fixed;z-index:50;background:var(--s2);border:1px solid var(--line2);border-radius:10px;padding:5px;box-shadow:0 16px 40px #000a;min-width:180px;max-height:360px;overflow:auto}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--text)}
+.menu button:hover,.menu button.hl{background:var(--s3)}
+.menu button.sel{color:var(--acc);font-weight:600}
+.menu .msep{height:1px;background:var(--line2);margin:5px 4px}
+.menu .mhint{color:var(--dim);font-size:11.5px;padding:2px 10px 6px}
+.toggle{position:relative;width:40px;height:22px;flex:none;border-radius:20px;background:#323947;border:0;cursor:pointer;transition:.15s}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#cfd4dd;transition:.15s}
+.toggle.on{background:var(--acc)}.toggle.on::after{left:21px;background:#fff}
+.trow{display:flex;align-items:center;gap:12px;padding:10px 0}
+.trow .tl{flex:1}.trow .tl b{display:block;font-weight:600}.trow .tl small{color:var(--muted)}
+.seg{display:inline-flex;background:var(--s2);border:1px solid var(--line2);border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{background:none;border:0;padding:6px 12px;border-radius:6px;color:var(--muted);cursor:pointer;font-weight:500}
+.seg button.on{background:var(--s3);color:#fff;box-shadow:0 1px 0 #ffffff10 inset}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:linear-gradient(90deg,var(--acc) var(--p,50%),#2a303c var(--p,50%));outline:none;margin:10px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;border:3px solid var(--acc);cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line2);background:var(--s2);color:var(--muted);border-radius:20px;padding:5px 11px;cursor:pointer;font-size:12.5px}
+.chip:hover{color:var(--text)}
+.chip.on{background:#2f9bff1f;border-color:var(--acc);color:#9fd0ff}
+.chip .x{margin-left:6px;opacity:.6}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:28px;height:28px;border-radius:8px;border:2px solid transparent;cursor:pointer;box-shadow:0 0 0 1px #ffffff14 inset}
+.sw.on{border-color:#fff}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 4px;font-size:14px;font-weight:600}
+.card .desc{color:var(--muted);margin:0 0 14px;font-size:12.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hint{color:var(--muted);font-size:12px}
+.mono{font-family:"Cascadia Code",Consolas,monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;background:var(--s3);color:var(--muted)}
+.pill.ok{background:#2bd17e1f;color:var(--ok)}.pill.bad{background:#ff4d5e1f;color:#ff8a95}.pill.warn{background:#ffb0201f;color:var(--warn)}
+.log{background:#0a0c10;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:12px/1.55 "Cascadia Code",Consolas,monospace;color:#b9c0cc;overflow:auto;white-space:pre-wrap;word-break:break-word}
+
+/* ---------- device page ---------- */
+.devlayout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.stage{background:radial-gradient(ellipse at 50% 35%,#1a2030 0%,#0f1218 70%);border:1px solid var(--line);border-radius:16px;padding:20px;position:relative}
+.stage svg{width:100%;height:auto;display:block;max-width:860px;margin:0 auto}
+.stage .tip{position:absolute;left:20px;top:16px;color:var(--dim);font-size:12px}
+.hot{cursor:pointer}
+.hot .selring{opacity:0;transition:opacity .12s}
+.hot:hover .selring{opacity:.45}
+.hot.sel .selring{opacity:1}
+.inspector{position:sticky;top:0}
+.inspector .head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.inspector .badge{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--s3);font-weight:700;color:#9fd0ff}
+.inspector .head b{font-size:16px;display:block}
+.inspector .head small{color:var(--muted)}
+.bigpct{font-size:34px;font-weight:700;letter-spacing:-1px}
+.meter{height:8px;border-radius:8px;background:#232834;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--accg);transition:width .12s}
+.meter.muted i{background:#ff4d5e}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:16px}
+.chan{background:var(--s1);border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;transition:border-color .12s}
+.chan:hover{border-color:var(--line2)}
+.chan.sel{border-color:var(--acc);box-shadow:0 0 0 3px #2f9bff1f}
+.chan .t{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.chan .t b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chan .t small{color:var(--dim);font-size:11px}
+.chan .apps{color:var(--muted);font-size:11.5px;margin-top:8px;height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mutebtn{border:1px solid var(--line2);background:var(--s2);border-radius:7px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--muted)}
+.mutebtn.on{background:#ff4d5e26;border-color:#ff4d5e66;color:#ff8a95}
+
+/* ---------- studio ---------- */
+.studio{display:flex;flex-direction:column;height:100%;min-height:0;gap:12px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar .board{margin-left:auto;color:var(--muted);font-size:12px;display:flex;align-items:center;gap:8px}
+.roundbtn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line2);background:var(--s2);cursor:pointer}
+.roundbtn:hover{background:var(--s3)}
+.roundbtn svg{width:18px;height:18px}
+.roundbtn.go{background:#2bd17e1f;border-color:#2bd17e55;color:var(--ok)}
+.roundbtn.up{background:#2f9bff1f;border-color:#2f9bff66;color:#9fd0ff}
+.editorwrap{flex:1 1 0;min-height:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#282c34;position:relative}
+.editorwrap .fname{position:absolute;right:12px;top:8px;z-index:5;color:var(--dim);font-size:11.5px;pointer-events:none}
+#editor{position:absolute;inset:0}
+#editor .cm-editor{height:100%}
+.dock{flex:none;height:230px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;background:var(--s1);overflow:hidden}
+.dock .tabs{display:flex;align-items:center;gap:2px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.dock .tabs button.t{background:none;border:0;color:var(--muted);padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:500}
+.dock .tabs button.t.on{background:var(--s3);color:#fff}
+.dock .body{flex:1;min-height:0;display:flex;flex-direction:column}
+.dock .log{flex:1;border:0;border-radius:0;margin:0}
+.errline{color:#ff8a95;cursor:pointer;text-decoration:underline dotted}
+.okline{color:var(--ok)}
+.monin{display:flex;gap:8px;padding:8px;border-top:1px solid var(--line)}
+
+/* ---------- diagnostics ---------- */
+.tgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.pgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.tbox{background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+.tbox.pass{border-color:#2bd17e88;background:#2bd17e0f}
+.tbox.held{box-shadow:0 0 0 2px var(--ok) inset}
+.tbox b{display:block;font-size:12.5px}.tbox small{color:var(--muted)}
+.tbox .v{font-size:22px;font-weight:700;margin:4px 0}
+.checklist .trow{border-top:1px solid var(--line)}
+
+/* ---------- overlays ---------- */
+#toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:80}
+.toast{background:var(--s3);border:1px solid var(--line2);border-left:3px solid var(--acc);padding:10px 14px;border-radius:10px;max-width:420px;box-shadow:0 10px 30px #0008;animation:tin .18s ease-out}
+.toast.err{border-left-color:var(--bad)}
+@keyframes tin{from{transform:translateY(8px);opacity:0}}
+.scrim{position:fixed;inset:0;background:#05070bcc;display:grid;place-items:center;z-index:90;animation:fin .12s}
+@keyframes fin{from{opacity:0}}
+.dialog{width:420px;background:var(--s1);border:1px solid var(--line2);border-radius:16px;padding:22px;box-shadow:0 30px 80px #000c}
+.dialog h3{margin:0 0 8px;font-size:16px}
+.dialog p{color:var(--muted);margin:0 0 16px}
+.dialog .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.banner{display:flex;align-items:center;gap:12px;background:#ffb0201a;border:1px solid #ffb02055;color:#ffd38a;border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.banner.hide{display:none}
+@media (max-width:1180px){.devlayout{grid-template-columns:1fr}.inspector{position:static}.strip{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34"><defs><linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2f9bff"/><stop offset="1" stop-color="#7b61ff"/></linearGradient></defs>
+        <path d="M6.7 27.3A14 14 0 1 1 27.3 27.3" fill="none" stroke="#323947" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M6.7 27.3A14 14 0 0 1 17 3" fill="none" stroke="url(#bg1)" stroke-width="3.2" stroke-linecap="round"/>
+        <circle cx="17" cy="17" r="8.5" fill="#20242d" stroke="#3d4556"/><rect x="16" y="9.8" width="2" height="6" rx="1" fill="#fff"/></svg>
+      <div><b>DEEJ</b><small>MIXER STUDIO</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-page="device" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="12" rx="3"/><circle cx="8" cy="12" r="2.6"/><path d="M13 10h5M13 14h5"/></svg>Device</button>
+      <button data-page="lighting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Lighting</button>
+      <button data-page="studio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></svg>Firmware Studio</button>
+      <button data-page="diag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h4l2.5-6 5 12L17 12h4"/></svg>Diagnostics</button>
+      <div class="sep"></div>
+      <button data-page="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+    </nav>
+    <div class="devcard">
+      <div class="row1"><span class="dot" id="cdot"></span><span id="ctitle">Deej Mixer</span></div>
+      <div class="sub" id="csub">Searching…</div>
+      <div class="sub" id="cgame"></div>
+    </div>
+    <div class="ver" id="ver"></div>
+  </aside>
+
+  <section class="main">
+    <header class="topbar">
+      <div><h1 id="ptitle">Device</h1><div class="crumb" id="psub">Knobs, buttons and what they control</div></div>
+      <div class="spacer"></div>
+      <span class="savestate" id="savestate"></span>
+      <div id="profileSel"></div>
+    </header>
+    <div class="content" id="content">
+
+      <!-- DEVICE -->
+      <div class="page on" id="p-device">
+        <div class="banner hide" id="fwBanner"><span id="fwBannerText"></span><span class="spacer"></span><button class="btn" id="fwBannerBtn">Update firmware</button></div>
+        <div class="devlayout">
+          <div>
+            <div class="stage"><span class="tip">Click a knob or button to configure it</span><svg id="devSvg" viewBox="0 0 760 330"></svg></div>
+            <div class="strip" id="strip"></div>
+          </div>
+          <div class="card inspector" id="inspector"></div>
+        </div>
+      </div>
+
+      <!-- LIGHTING -->
+      <div class="page" id="p-lighting">
+        <div class="devlayout">
+          <div>
+            <div class="stage"><span class="tip">Click the ring or a logo LED</span><svg id="ledSvg" viewBox="0 0 760 330"></svg></div>
+            <div class="card" style="margin-top:16px">
+              <h3>When an app isn't playing</h3>
+              <p class="desc">Logo LEDs are always off while their knob is muted, and at full brightness when on.</p>
+              <div id="idleSeg"></div>
+            </div>
+          </div>
+          <div class="card inspector" id="ledInspector"></div>
+        </div>
+      </div>
+
+      <!-- STUDIO -->
+      <div class="page full" id="p-studio">
+        <div class="studio">
+          <div class="toolbar">
+            <button class="roundbtn go" id="sVerify" title="Verify (Ctrl+R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m5 12 4.5 4.5L19 7"/></svg></button>
+            <button class="roundbtn up" id="sUpload" title="Upload (Ctrl+U)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            <div style="width:8px"></div>
+            <button class="btn" id="sSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h7V3M8 21v-7h8v7"/></svg>Save</button>
+            <button class="btn" id="sRevert">Restore stock firmware</button>
+            <button class="btn ghost" id="sFolder">Open sketch folder</button>
+            <div class="board"><span class="pill" id="sState">Saved</span><span>Arduino Nano · ATmega328P</span><span class="mono" id="sPort"></span></div>
+          </div>
+          <div class="editorwrap"><span class="fname mono">DeejMixer.ino</span><div id="editor"></div></div>
+          <div class="dock">
+            <div class="tabs"><button class="t on" data-dt="out">Output</button><button class="t" data-dt="mon">Serial Monitor</button><span class="spacer"></span><span class="hint" id="sJobState" style="padding-right:8px"></span></div>
+            <div class="body" id="dt-out"><div class="log selectable" id="sLog">Verify compiles the sketch; Upload compiles and writes it to the mixer. The first build may download the Arduino tools.</div></div>
+            <div class="body" id="dt-mon" style="display:none">
+              <div class="log selectable" id="monLog"></div>
+              <div class="monin"><button class="btn" id="monToggle">Open monitor</button><input class="input mono" id="monText" placeholder="Send a line (115200 baud)…"><button class="btn" id="monSend">Send</button><button class="btn ghost" id="monClear">Clear</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIAGNOSTICS -->
+      <div class="page" id="p-diag">
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:240px"><h3>Hardware test</h3><p class="desc" style="margin:0">Volume and button actions pause while the test runs. Press every button and turn every knob all the way both ways.</p></div>
+            <button class="btn primary" id="tStart">Start test</button><button class="btn" id="tReset">Reset</button><button class="btn" id="tStop">Finish</button><button class="btn" id="tSave">Save report</button>
+          </div>
+          <div style="font-size:20px;font-weight:700;margin-top:14px" id="tSummary">Not running</div>
+        </div>
+        <div class="stage" style="margin-bottom:16px"><svg id="diagSvg" viewBox="0 0 760 330"></svg></div>
+        <div class="card" style="margin-bottom:16px"><h3>Buttons</h3><p class="desc">Pass = a full press and release. HELD without touching it means the pin is shorted to GND or the switch is turned 90°.</p><div class="tgrid" id="tBtns"></div></div>
+        <div class="card" style="margin-bottom:16px"><h3>Knobs</h3><p class="desc">Pass = both ends reached (≤ 20 and ≥ 1003). Values drifting on their own mean a loose wiper, 5V or GND.</p><div class="pgrid" id="tPots"></div></div>
+        <div class="card checklist"><h3>LEDs</h3><p class="desc">Pick a pattern and confirm what you see. Chase lights one LED at a time, in order.</p><div id="tPatterns" style="margin-bottom:8px"></div>
+          <div class="trow"><div class="tl"><b>All 7 ring LEDs light up</b></div><button class="toggle" id="ringOk"></button></div>
+          <div class="trow"><div class="tl"><b>All 4 logo LEDs light, nearest → farthest</b></div><button class="toggle" id="logoOk"></button></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="page" id="p-settings">
+        <div class="grid2">
+          <div class="card"><h3>Connection</h3><p class="desc">The mixer is found automatically. Choose a port only if several Arduinos are plugged in.</p>
+            <div class="field"><label>Port</label><div id="portSel"></div></div>
+            <div style="display:flex;gap:8px"><button class="btn" id="refreshPorts">Refresh ports</button><button class="btn" id="reconnect">Reconnect</button></div>
+            <p class="hint selectable" id="statusLine" style="margin:12px 0 0"></p>
+            <div class="log selectable" id="probeReport" style="margin-top:10px;max-height:120px;display:none"></div>
+          </div>
+          <div class="card"><h3>Firmware</h3><p class="desc">Writes the stock Deej Mixer firmware to the Nano. Use Firmware Studio to edit and upload your own version.</p>
+            <div class="field"><label>Upload to</label><div id="uploadPortSel"></div></div>
+            <button class="btn primary" id="uploadStock">Upload stock firmware</button>
+            <div class="log selectable" id="uploadLog" style="margin-top:12px;max-height:160px;display:none"></div>
+          </div>
+          <div class="card"><h3>This PC</h3>
+            <div class="trow"><div class="tl"><b>Start with Windows</b><small>Runs quietly in the system tray</small></div><button class="toggle" id="startup"></button></div>
+            <div class="trow" style="border-top:1px solid var(--line)"><div class="tl"><b id="installTitle">Install</b><small id="installHint"></small></div><button class="btn" id="install">Install</button></div>
+            <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn" id="drivers">Install CH340 USB driver</button><button class="btn" id="openData">Open settings folder</button><button class="btn danger" id="restoreDefaults">Reset profile to defaults</button></div>
+          </div>
+          <div class="card"><h3>Activity</h3><div class="log selectable" id="activity" style="height:200px"></div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</div>
+<div id="toasts"></div>
+
+<script>
+"use strict";
+const TOKEN = new URLSearchParams(location.search).get("t") || "";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const ACTIONS = [["mute","Mute knob"],["mute_mic","Mute microphone"],["launch","Launch app or link"],["hotkey","Keyboard shortcut"],
+  ["play_pause","Play / pause"],["next_track","Next track"],["prev_track","Previous track"],["none","Do nothing"]];
+const SPECIAL = [["master","Speakers (master)"],["mic","Microphone"],["system","System sounds"],["steam_game","Current Steam game"],["other","Everything else"]];
+const COLORS = ["#FF1B2D","#FF6A00","#FFC400","#B6FF00","#1DB954","#00E5A0","#00D4FF","#66C0F4","#2F9BFF","#3D5AFE","#5865F2","#7B61FF","#C34DFF","#FF4FB0","#FFFFFF"];
+const PAGES = {device:["Device","Knobs, buttons and what they control"],lighting:["Lighting","Ring and logo LEDs"],
+  studio:["Firmware Studio","Edit, compile and upload the mixer's Arduino code"],diag:["Diagnostics","Test every button, knob and LED"],settings:["Settings","Connection, firmware and this PC"]};
+let S = null, cfg = null, live = null, sel = {kind:"knob", i:0}, ledSel = {kind:"ring", i:0}, page = "device";
+
+// ---------- helpers ----------
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null) continue;
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else if (k === "html") e.innerHTML = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v);
+  }
+  for (const k of kids) if (k !== null && k !== undefined) e.append(k);
+  return e;
+}
+function s(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.append(e); return e; }
+function toast(msg, err) { const t = el("div", {class: "toast" + (err ? " err" : ""), text: msg}); $("toasts").append(t); setTimeout(() => t.remove(), err ? 6500 : 2800); }
+async function call(path, body) {
+  const r = await fetch(path, {method: body === undefined ? "GET" : "POST", headers: {"X-Deej-Token": TOKEN, "Content-Type": "application/json"}, body: body === undefined ? undefined : JSON.stringify(body)});
+  const j = await r.json().catch(() => ({error: "No response from Deej Mixer"}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const cmd = (c, extra = {}) => call("/api/command", {cmd: c, ...extra}).catch(e => toast(e.message, true));
+const knobName = i => (cfg && cfg.pots[i].label) || `Knob ${i}`;
+const lvl = (raw, rev) => Math.max(0, Math.min(1, rev ? 1 - raw / 1023 : raw / 1023));
+
+// modal dialog: dialog({title, text, ok, cancel, input, danger}) -> Promise<string|true|null>
+function dialog(o) {
+  return new Promise(res => {
+    const inp = o.input !== undefined ? el("input", {class: "input", value: o.input}) : null;
+    const close = v => { scrim.remove(); document.removeEventListener("keydown", key); res(v); };
+    const okb = el("button", {class: "btn " + (o.danger ? "danger" : "primary"), text: o.ok || "OK", onclick: () => close(inp ? inp.value : true)});
+    const scrim = el("div", {class: "scrim", onmousedown: e => { if (e.target === scrim) close(null); }},
+      el("div", {class: "dialog"}, el("h3", {text: o.title}), o.text ? el("p", {text: o.text}) : null, inp,
+        el("div", {class: "acts"}, el("button", {class: "btn ghost", text: o.cancel || "Cancel", onclick: () => close(null)}), okb)));
+    const key = e => { if (e.key === "Escape") close(null); if (e.key === "Enter") okb.click(); };
+    document.addEventListener("keydown", key);
+    document.body.append(scrim); (inp || okb).focus(); if (inp) inp.select();
+  });
+}
+// custom dropdown: items [{value,label,hint}] ; returns {el, set(value), setItems(items)}
+function dropdown(items, value, onChange, opts = {}) {
+  const lab = el("span"); const b = el("button", {class: "btn"}, lab, el("span", {html: "&#9662;", style: "opacity:.6"}));
+  const wrap = el("div", {class: "select"}, b);
+  let cur = value, list = items;
+  const show = () => { const it = list.find(x => x.value === cur); lab.textContent = it ? it.label : (opts.placeholder || cur || "—"); };
+  b.onclick = e => {
+    e.stopPropagation(); closeMenus();
+    const m = el("div", {class: "menu"});
+    for (const it of list) {
+      if (it.sep) { m.append(el("div", {class: "msep"})); continue; }
+      m.append(el("button", {class: it.value === cur ? "sel" : "", onclick: () => { closeMenus(); if (it.action) { it.action(); return; } cur = it.value; show(); onChange(cur); }},
+        el("span", {text: it.label}), it.hint ? el("span", {class: "hint", text: it.hint, style: "margin-left:auto"}) : null));
+    }
+    document.body.append(m);
+    const r = b.getBoundingClientRect(); m.style.minWidth = r.width + "px";
+    const top = r.bottom + 4 + m.offsetHeight > innerHeight ? r.top - 4 - m.offsetHeight : r.bottom + 4;
+    m.style.top = Math.max(8, top) + "px"; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + "px";
+  };
+  show();
+  return {el: wrap, set: v => { cur = v; show(); }, setItems: it => { list = it; show(); }};
+}
+function closeMenus() { document.querySelectorAll(".menu").forEach(m => m.remove()); }
+document.addEventListener("mousedown", e => { if (!e.target.closest(".menu") && !e.target.closest(".select")) closeMenus(); });
+window.addEventListener("blur", closeMenus);
+function toggle(btn, on, onChange) { btn.classList.toggle("on", !!on); btn.onclick = () => { const v = !btn.classList.contains("on"); btn.classList.toggle("on", v); onChange(v); }; }
+function seg(items, value, onChange) {
+  const w = el("div", {class: "seg"});
+  const draw = v => w.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === String(v)));
+  items.forEach(([v, t]) => w.append(el("button", {"data-v": v, text: t, onclick: () => { draw(v); onChange(v); }})));
+  draw(value); return w;
+}
+function slider(min, max, value, onInput) {
+  const r = el("input", {type: "range", min, max, value});
+  const paint = () => r.style.setProperty("--p", ((r.value - min) / (max - min) * 100) + "%");
+  r.addEventListener("input", () => { paint(); onInput(+r.value); }); paint(); return r;
+}
+document.addEventListener("contextmenu", e => { if (!e.target.closest("input,textarea,.cm-editor")) e.preventDefault(); });
+document.addEventListener("dragstart", e => e.preventDefault());
+
+// ---------- autosave ----------
+let saveTimer = null, saving = false;
+function changed(rebuild) {
+  $("savestate").className = "savestate"; $("savestate").textContent = "Saving…";
+  clearTimeout(saveTimer); saveTimer = setTimeout(save, 450);
+  if (rebuild) renderAll();
+}
+async function save() {
+  if (saving) { saveTimer = setTimeout(save, 200); return; }
+  saving = true;
+  try {
+    const c = await call("/api/config", cfg);
+    S.config = c; $("savestate").className = "savestate"; $("savestate").textContent = "✓ Saved to " + S.activeProfile;
+  } catch (e) { $("savestate").className = "savestate err"; $("savestate").textContent = "Not saved: " + e.message; }
+  saving = false;
+}
+
+// ---------- navigation ----------
+function go(p) {
+  if (!PAGES[p]) p = "device";
+  page = p;
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.page === p));
+  document.querySelectorAll(".page").forEach(x => x.classList.toggle("on", x.id === "p-" + p));
+  $("ptitle").textContent = PAGES[p][0]; $("psub").textContent = PAGES[p][1];
+  $("content").style.padding = p === "studio" ? "16px 20px" : ""; $("content").style.overflow = p === "studio" ? "hidden" : "auto";
+  if (p === "studio") studioOpen();
+  if (location.hash !== "#" + p) history.replaceState(null, "", "#" + p);
+}
+document.querySelectorAll("#nav button").forEach(b => b.onclick = () => go(b.dataset.page));
+window.addEventListener("hashchange", () => go({test: "diag"}[location.hash.slice(1)] || location.hash.slice(1)));
+
+// ---------- profiles ----------
+function renderProfiles() {
+  const items = S.profiles.map(n => ({value: n, label: n}));
+  items.push({sep: true},
+    {label: "New profile…", action: () => profileAsk("create", "New profile", "Profile name", "")},
+    {label: "Duplicate this profile…", action: () => profileAsk("duplicate", "Duplicate profile", "Name for the copy", S.activeProfile + " copy")},
+    {label: "Rename…", action: () => profileAsk("rename", "Rename profile", "New name", S.activeProfile)},
+    {label: "Delete this profile", action: async () => { if (await dialog({title: `Delete “${S.activeProfile}”?`, text: "Its knob, button and lighting settings will be removed.", ok: "Delete", danger: true})) profile("delete", S.activeProfile); }});
+  const d = dropdown(items, S.activeProfile, v => profile("switch", v));
+  d.el.style.minWidth = "200px";
+  d.el.querySelector(".btn").prepend(el("span", {class: "hint", text: "Profile", style: "margin-right:4px"}));
+  $("profileSel").replaceChildren(d.el);
+}
+async function profileAsk(action, title, text, def) { const n = await dialog({title, text, input: def, ok: "Save"}); if (n) profile(action, S.activeProfile, n); }
+async function profile(action, name, newName) {
+  try { const st = await call("/api/profile", {action, name, newName}); S = st; cfg = structuredClone(S.config); renderAll(); renderProfiles();
+    $("savestate").textContent = "✓ " + (action === "switch" ? "Switched to " : "Profile ") + S.activeProfile; }
+  catch (e) { toast(e.message, true); }
+}
+
+// ---------- device drawing ----------
+// Layout (facing the mixer, big knob left): A0 big knob + 7-LED ring; four columns: small knob above logo button;
+// two small buttons under the first logo.
+const LOGO = i => cfg ? cfg.logoColors[i] : "#fff";
+function drawDevice(svg, mode) {
+  svg.replaceChildren();
+  const d = {ring: [], knobs: [], arcs: [], btn: [], led: [], hot: []};
+  const defs = s("defs", {}, svg);
+  defs.innerHTML = `<linearGradient id="body-${mode}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#232834"/><stop offset="1" stop-color="#161a22"/></linearGradient>
+    <radialGradient id="knob-${mode}" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#3a4150"/><stop offset=".6" stop-color="#232833"/><stop offset="1" stop-color="#171b23"/></radialGradient>
+    <filter id="glow-${mode}" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="5"/></filter>`;
+  s("rect", {x: 10, y: 14, width: 740, height: 300, rx: 34, fill: `url(#body-${mode})`, stroke: "#313846", "stroke-width": 1.5}, svg);
+  s("rect", {x: 18, y: 22, width: 724, height: 284, rx: 28, fill: "none", stroke: "#ffffff08"}, svg);
+  const hot = (g, kind, i) => { g.classList.add("hot"); g.dataset.kind = kind; g.dataset.i = i; d.hot.push(g); return g; };
+  // big knob
+  const bx = 160, by = 160;
+  const gk = hot(s("g", {}, svg), mode === "led" ? "ring" : "knob", 0);
+  s("circle", {class: "selring", cx: bx, cy: by, r: 126, fill: "none", stroke: "#2f9bff", "stroke-width": 2, "stroke-dasharray": "4 6"}, gk);
+  for (let i = 0; i < 7; i++) {
+    const a = (-225 + i * 45) * Math.PI / 180, x = bx + 104 * Math.cos(a), y = by + 104 * Math.sin(a);
+    const glow = s("circle", {cx: x, cy: y, r: 12, fill: "transparent", filter: `url(#glow-${mode})`}, gk);
+    const c = s("circle", {cx: x, cy: y, r: 7, fill: "#262c38", stroke: "#0b0d12", "stroke-width": 2}, gk);
+    d.ring.push([c, glow]);
+  }
+  s("circle", {cx: bx, cy: by, r: 80, fill: "#0d1016", stroke: "#2a303c"}, gk);
+  const arc = s("path", {fill: "none", stroke: "#2f9bff", "stroke-width": 5, "stroke-linecap": "round", d: ""}, gk); d.arcs.push(arc);
+  s("circle", {cx: bx, cy: by, r: 68, fill: `url(#knob-${mode})`, stroke: "#3c4352", "stroke-width": 1.5}, gk);
+  d.knobs.push(s("line", {x1: bx, y1: by, x2: bx, y2: by - 52, stroke: "#f2f4f8", "stroke-width": 5, "stroke-linecap": "round"}, gk));
+  d.bigLabel = s("text", {x: bx, y: 300, fill: "#8a93a3", "text-anchor": "middle", "font-size": 13, "font-weight": 600}, svg);
+  // small columns
+  for (let i = 0; i < 4; i++) {
+    const x = 370 + i * 108;
+    const g = hot(s("g", {}, svg), "knob", i + 1);
+    s("circle", {class: "selring", cx: x, cy: 82, r: 44, fill: "none", stroke: "#2f9bff", "stroke-width": 2, "stroke-dasharray": "4 6"}, g);
+    s("circle", {cx: x, cy: 82, r: 36, fill: "#0d1016", stroke: "#2a303c"}, g);
+    d.arcs.push(s("path", {fill: "none", stroke: "#2f9bff", "stroke-width": 3.5, "stroke-linecap": "round", d: ""}, g));
+    s("circle", {cx: x, cy: 82, r: 29, fill: `url(#knob-${mode})`, stroke: "#3c4352"}, g);
+    d.knobs.push(s("line", {x1: x, y1: 82, x2: x, y2: 60, stroke: "#f2f4f8", "stroke-width": 3.5, "stroke-linecap": "round"}, g));
+    const lab = s("text", {x, y: 138, fill: "#8a93a3", "text-anchor": "middle", "font-size": 11.5, "font-weight": 600}, svg); d["kl" + (i + 1)] = lab;
+    const gb = hot(s("g", {}, svg), mode === "led" ? "logo" : "button", i);
+    s("rect", {class: "selring", x: x - 46, y: 152, width: 92, height: 92, rx: 22, fill: "none", stroke: "#2f9bff", "stroke-width": 2, "stroke-dasharray": "4 6"}, gb);
+    const glow = s("rect", {x: x - 34, y: 164, width: 68, height: 68, rx: 16, fill: "transparent", filter: `url(#glow-${mode})`}, gb);
+    const b = s("rect", {x: x - 36, y: 162, width: 72, height: 72, rx: 17, fill: "#1b2029", stroke: "#3a4150", "stroke-width": 1.5}, gb);
+    const t = s("text", {x, y: 204, fill: "#e8eaef", "text-anchor": "middle", "font-size": 13, "font-weight": 700}, gb);
+    t.textContent = S.buttonNames[i].replace(" logo", "");
+    d.btn.push(b); d.led.push([b, glow, t]);
+  }
+  for (let k = 0; k < 2; k++) {
+    const x = 352 + k * 36;
+    const g = hot(s("g", {}, svg), mode === "led" ? "none" : "button", 4 + k);
+    s("rect", {class: "selring", x: x - 18, y: 252, width: 36, height: 36, rx: 10, fill: "none", stroke: "#2f9bff", "stroke-width": 2, "stroke-dasharray": "3 4"}, g);
+    d.btn.push(s("rect", {x: x - 13, y: 257, width: 26, height: 26, rx: 7, fill: "#1b2029", stroke: "#3a4150", "stroke-width": 1.5}, g));
+    s("text", {x, y: 302, fill: "#5d6575", "text-anchor": "middle", "font-size": 10}, svg).textContent = k ? "D7" : "D6";
+  }
+  for (const g of d.hot) g.addEventListener("click", () => {
+    const kind = g.dataset.kind, i = +g.dataset.i; if (kind === "none") return;
+    if (mode === "led") { ledSel = {kind, i}; renderLedInspector(); } else if (mode === "dev") { sel = {kind, i}; renderInspector(); renderStrip(); }
+    paintSel();
+  });
+  return d;
+}
+const devs = {};
+function arcPath(cx, cy, r, f) {
+  if (f <= 0.001) return "";
+  const a0 = -225 * Math.PI / 180, a1 = (-225 + 270 * f) * Math.PI / 180;
+  const p = a => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cy + r * Math.sin(a)).toFixed(1)}`;
+  return `M ${p(a0)} A ${r} ${r} 0 ${270 * f > 180 ? 1 : 0} 1 ${p(a1)}`;
+}
+function paintSel() {
+  for (const [mode, d] of Object.entries(devs)) for (const g of d.hot) {
+    const k = g.dataset.kind, i = +g.dataset.i;
+    const on = mode === "dev" ? (k === sel.kind && i === sel.i) : mode === "led" ? (k === ledSel.kind && i === ledSel.i) : false;
+    g.classList.toggle("sel", on);
+  }
+}
+function updateDevice(d, L) {
+  if (!d || !cfg) return;
+  const conn = L && L.connected;
+  for (let i = 0; i < 5; i++) {
+    const f = conn ? lvl(L.values[i], cfg.pots[i].reverse) : 0;
+    const k = d.knobs[i]; const cx = +k.getAttribute("x1"), cy = +k.getAttribute("y1"), len = i === 0 ? 52 : 22;
+    const a = (-225 + 270 * f) * Math.PI / 180;
+    k.setAttribute("x2", cx + len * Math.cos(a)); k.setAttribute("y2", cy + len * Math.sin(a));
+    const muted = L && L.pots[i] && (L.pots[i].muted || L.masterMuted);
+    d.arcs[i].setAttribute("d", arcPath(cx, cy, i === 0 ? 74 : 32.5, f)); d.arcs[i].setAttribute("stroke", muted ? "#ff4d5e" : "#2f9bff");
+  }
+  d.bigLabel.textContent = "A0 · " + knobName(0);
+  const short = n => n.length > 13 ? n.slice(0, 12) + "…" : n;
+  for (let i = 1; i < 5; i++) d["kl" + i].textContent = short(knobName(i));
+  // ring LEDs: mirror what the firmware shows
+  const masterMuted = L && L.masterMuted, p0 = L && L.pots[0];
+  const ringOn = conn && !masterMuted && !(p0 && p0.muted) ? Math.ceil(lvl(L.values[0], cfg.pots[0].reverse) * 7 - 1e-9) : 0;
+  const ringCol = L && L.micMuted && cfg.micIndicator ? cfg.micColor : cfg.ringColor;
+  d.ring.forEach(([c, g], i) => { const on = d === devs.led ? true : i < ringOn; c.setAttribute("fill", on ? ringCol : "#262c38"); g.setAttribute("fill", on ? ringCol + "99" : "transparent"); });
+  // logo LEDs
+  d.led.forEach(([b, g, t], i) => {
+    const ch = cfg.logoChannel[i], p = L && L.pots[ch];
+    let state = 2;
+    if (d !== devs.led) { if (!conn || masterMuted || (p && p.muted)) state = 0; else if (p && !p.active) state = {off: 0, dim: 1, on: 2}[cfg.idleLogo]; }
+    const col = cfg.logoColors[i];
+    b.setAttribute("stroke", state ? col : "#3a4150"); b.setAttribute("fill", state === 2 ? col + "33" : state === 1 ? col + "14" : "#1b2029");
+    g.setAttribute("fill", state === 2 ? col + "88" : "transparent");
+  });
+  // pressed buttons
+  if (L) d.btn.forEach((b, i) => { if (L.mask & (1 << i)) { b.setAttribute("stroke", "#2bd17e"); b.setAttribute("stroke-width", 3); } else b.setAttribute("stroke-width", 1.5); if (i >= 4 && !(L.mask & (1 << i))) b.setAttribute("stroke", "#3a4150"); });
+}
+
+// ---------- device page: inspector + strip ----------
+function targetEditor(i) {
+  const p = cfg.pots[i]; const parts = () => p.target.split(",").map(x => x.trim()).filter(Boolean);
+  const setParts = a => { p.target = a.join(", "); changed(); renderInspector(); };
+  const wrap = el("div");
+  const chips = el("div", {class: "chips", style: "margin-bottom:10px"});
+  for (const [v, t] of SPECIAL) chips.append(el("button", {class: "chip" + (parts().includes(v) ? " on" : ""), text: t,
+    onclick: () => { const a = parts(); setParts(a.includes(v) ? a.filter(x => x !== v) : [...a, v]); }}));
+  wrap.append(el("label", {class: "lbl", text: "Controls"}), chips);
+  const apps = el("div", {class: "chips", style: "margin-bottom:10px"});
+  const running = (live && live.allApps || []).filter(a => a !== "system");
+  const custom = parts().filter(x => !SPECIAL.some(([v]) => v === x));
+  for (const a of [...new Set([...custom, ...running])]) {
+    const on = parts().includes(a) || parts().includes(a.replace(/\.exe$/, ""));
+    apps.append(el("button", {class: "chip" + (on ? " on" : ""), text: a + (running.includes(a) ? "" : " · not running"),
+      onclick: () => { const cur = parts(); setParts(on ? cur.filter(x => x !== a && x !== a.replace(/\.exe$/, "")) : [...cur, a]); }}));
+  }
+  wrap.append(el("label", {class: "lbl", text: "Apps (playing now, or added by you)"}), apps.childElementCount ? apps : el("p", {class: "hint", text: "No apps are playing sound right now."}));
+  const add = el("input", {class: "input", placeholder: "Add a program, e.g. chrome.exe — then press Enter"});
+  add.onkeydown = e => { if (e.key === "Enter" && add.value.trim()) { let v = add.value.trim().toLowerCase(); if (!v.includes(".")) v += ".exe"; setParts([...parts(), v]); } };
+  wrap.append(add);
+  return wrap;
+}
+function actionEditor(i, aKey, vKey, title, runN) {
+  const b = cfg.buttons[i]; const box = el("div", {class: "field"});
+  const valWrap = el("div", {style: "margin-top:8px"});
+  const drawVal = () => {
+    valWrap.replaceChildren(); const a = b[aKey];
+    if (a === "mute") valWrap.append(dropdown([0, 1, 2, 3, 4].map(k => ({value: String(k), label: `A${k} · ${knobName(k)}`})), b[vKey] || "0", v => { b[vKey] = v; changed(); }).el);
+    else if (a === "launch" || a === "hotkey") {
+      const inp = el("input", {class: "input" + (a === "hotkey" ? " mono" : ""), value: b[vKey] || "", placeholder: a === "launch" ? "steam://open/main, spotify:, or a program path" : "e.g. CTRL+SHIFT+M"});
+      inp.oninput = () => { b[vKey] = inp.value; changed(); }; valWrap.append(inp);
+    }
+  };
+  box.append(el("label", {class: "lbl", text: title}),
+    el("div", {style: "display:flex;gap:8px"}, el("div", {style: "flex:1"}, dropdown(ACTIONS.map(([v, t]) => ({value: v, label: t})), b[aKey], v => {
+      b[aKey] = v; if (v === "mute" && !/^[0-4]$/.test(b[vKey])) b[vKey] = "0"; if (v !== "mute" && /^[0-4]$/.test(b[vKey] || "")) b[vKey] = ""; drawVal(); changed(); }).el),
+      el("button", {class: "btn", text: "Test", title: "Run this action now", onclick: () => { clearTimeout(saveTimer); save().then(() => cmd("run", {n: runN})); }})), valWrap);
+  drawVal(); return box;
+}
+function renderInspector() {
+  const box = $("inspector"); box.replaceChildren(); if (!cfg) return;
+  if (sel.kind === "knob") {
+    const i = sel.i, p = cfg.pots[i];
+    const name = el("input", {class: "input", value: p.label}); name.oninput = () => { p.label = name.value; changed(); renderStrip(); updateLabels(); };
+    const rev = el("button", {class: "toggle"}); toggle(rev, p.reverse, v => { p.reverse = v; changed(); });
+    box.append(el("div", {class: "head"}, el("div", {class: "badge", text: "A" + i}), el("div", {}, el("b", {text: p.label}), el("small", {text: i === 0 ? "Big knob" : `Small knob ${i}` + (i === 1 ? " · nearest the big knob" : i === 4 ? " · farthest" : "")}))),
+      el("div", {style: "display:flex;align-items:end;gap:12px;margin-bottom:8px"}, el("div", {class: "bigpct", id: "insPct", text: "–"}), el("div", {style: "flex:1"}), el("button", {class: "mutebtn", id: "insMute", text: "Mute", onclick: () => muteKnob(i)})),
+      el("div", {class: "meter", id: "insMeter", style: "margin-bottom:6px"}, el("i")), el("div", {class: "hint", id: "insApps", style: "margin-bottom:18px"}),
+      el("div", {class: "field"}, el("label", {text: "Name"}), name), targetEditor(i),
+      el("div", {class: "trow", style: "margin-top:8px"}, el("div", {class: "tl"}, el("b", {text: "Reverse direction"}), el("small", {text: "Use if turning up lowers the volume"})), rev));
+  } else {
+    const i = sel.i;
+    box.append(el("div", {class: "head"}, el("div", {class: "badge", text: S.buttonPins[i]}), el("div", {}, el("b", {text: S.buttonNames[i]}), el("small", {text: i < 4 ? "Logo button" : "Small button under the first logo"}))),
+      actionEditor(i, "action", "value", "When pressed", i), actionEditor(i, "holdAction", "holdValue", "When held", i + 6),
+      el("div", {class: "field"}, el("label", {class: "lbl", text: "Hold time"}), (() => { const w = el("div", {style: "display:flex;align-items:center;gap:12px"}); const t = el("span", {class: "mono", text: cfg.holdMs + " ms", style: "width:70px"});
+        w.append(slider(250, 2000, cfg.holdMs, v => { cfg.holdMs = Math.round(v / 50) * 50; t.textContent = cfg.holdMs + " ms"; changed(); }), t); return w; })()),
+      el("p", {class: "hint", text: "With a hold action set, a short press runs when you let go; holding runs the hold action instead."}));
+  }
+  updateLive();
+}
+function muteKnob(i) { const n = cfg.buttons.findIndex(b => b.action === "mute" && b.value === String(i)); if (n >= 0) cmd("run", {n}); else toast("Mute this knob from the Windows mixer, or assign a button to it.", false); }
+function renderStrip() {
+  const st = $("strip"); st.replaceChildren(); if (!cfg) return;
+  for (let i = 0; i < 5; i++) st.append(el("div", {class: "chan" + (sel.kind === "knob" && sel.i === i ? " sel" : ""), onclick: () => { sel = {kind: "knob", i}; renderInspector(); renderStrip(); paintSel(); }},
+    el("div", {class: "t"}, el("b", {text: knobName(i)}), el("small", {text: "A" + i})), el("div", {class: "meter", id: "sm" + i}, el("i")),
+    el("div", {class: "t", style: "margin:8px 0 0"}, el("span", {class: "mono", id: "sp" + i, text: "–"}), el("span", {class: "pill", id: "ss" + i, text: ""})),
+    el("div", {class: "apps", id: "sa" + i})));
+}
+function updateLabels() { for (const d of Object.values(devs)) updateDevice(d, live); }
+
+// ---------- lighting ----------
+function colorField(get, set) {
+  const w = el("div"); const sw = el("div", {class: "swatches"});
+  const hex = el("input", {class: "input mono", style: "width:110px", value: get()});
+  const pick = el("input", {type: "color", value: get().toLowerCase(), style: "width:38px;height:34px;border:0;background:none;padding:0;cursor:pointer"});
+  const apply = v => { v = v.toUpperCase(); if (!/^#[0-9A-F]{6}$/.test(v)) return; set(v); hex.value = v; pick.value = v.toLowerCase(); sw.querySelectorAll(".sw").forEach(x => x.classList.toggle("on", x.dataset.c === v)); changed(); updateLabels(); };
+  for (const c of COLORS) sw.append(el("button", {class: "sw" + (c === get() ? " on" : ""), "data-c": c, style: `background:${c}`, onclick: () => apply(c)}));
+  hex.onchange = () => apply(hex.value.startsWith("#") ? hex.value : "#" + hex.value); pick.oninput = () => apply(pick.value);
+  w.append(sw, el("div", {style: "display:flex;gap:8px;align-items:center;margin-top:10px"}, hex, pick)); return w;
+}
+function renderLedInspector() {
+  const box = $("ledInspector"); box.replaceChildren(); if (!cfg) return;
+  if (ledSel.kind === "ring") {
+    const pct = el("span", {class: "mono", text: cfg.brightness + "%"});
+    const mic = el("button", {class: "toggle"}); toggle(mic, cfg.micIndicator, v => { cfg.micIndicator = v; changed(); renderLedInspector(); });
+    box.append(el("div", {class: "head"}, el("div", {class: "badge", text: "7"}), el("div", {}, el("b", {text: "Level ring"}), el("small", {text: "7 LEDs around the big knob · shows its level"}))),
+      el("div", {class: "field"}, el("label", {text: "Colour"}), colorField(() => cfg.ringColor, v => cfg.ringColor = v)),
+      el("div", {class: "field"}, el("label", {text: "Brightness"}), el("div", {style: "display:flex;gap:12px;align-items:center"}, slider(0, 100, cfg.brightness, v => { cfg.brightness = v; pct.textContent = v + "%"; changed(); }), pct)),
+      el("div", {class: "trow"}, el("div", {class: "tl"}, el("b", {text: "Microphone mute indicator"}), el("small", {text: "Ring changes colour while the mic is muted"})), mic));
+    if (cfg.micIndicator) box.append(el("div", {class: "field"}, el("label", {text: "Mic-muted colour"}), colorField(() => cfg.micColor, v => cfg.micColor = v)));
+  } else {
+    const i = ledSel.i;
+    box.append(el("div", {class: "head"}, el("div", {class: "badge", style: `color:${cfg.logoColors[i]}`, text: "●"}), el("div", {}, el("b", {text: S.buttonNames[i] + " LED"}), el("small", {text: `Logo LED ${i + 1} · always 100% brightness when on`}))),
+      el("div", {class: "field"}, el("label", {text: "Colour"}), colorField(() => cfg.logoColors[i], v => cfg.logoColors[i] = v)),
+      el("div", {class: "field"}, el("label", {text: "Turns off when this knob is muted"}),
+        dropdown([0, 1, 2, 3, 4].map(k => ({value: String(k), label: `A${k} · ${knobName(k)}`})), String(cfg.logoChannel[i]), v => { cfg.logoChannel[i] = +v; changed(); }).el));
+  }
+}
+
+// ---------- studio ----------
+let ed = null, sDirty = false, sLoaded = false, jobPoll = null, monSeq = 0, monPoll = null, monOpen = false;
+async function studioOpen() {
+  if (sLoaded) { setTimeout(() => ed && ed.focus(), 50); return; }
+  sLoaded = true;
+  try {
+    const r = await call("/api/studio/sketch");
+    ed = window.DeejEditor.create($("editor"), r.source, () => { sDirty = true; sState(); });
+    sModified = r.modified; sState();
+  } catch (e) { $("sLog").textContent = "Could not open the sketch: " + e.message; }
+}
+let sModified = false;
+function sState() { const p = $("sState"); p.className = "pill " + (sDirty ? "warn" : ""); p.textContent = sDirty ? "Unsaved" : sModified ? "Saved · custom" : "Saved · stock"; }
+async function sSave() { if (!ed) return; const r = await call("/api/studio/sketch", {source: ed.get()}); sDirty = false; sModified = r.modified; sState(); }
+async function sBuild(upload) {
+  if (!ed) return;
+  try { await sSave(); } catch (e) { toast(e.message, true); return; }
+  if (upload && !await dialog({title: "Upload to the mixer?", text: "This replaces the program on the Nano with your sketch. The mixer reconnects afterwards if your code still speaks the Deej Mixer protocol.", ok: "Upload"})) return;
+  try { await call("/api/studio/build", {upload}); } catch (e) { toast(e.message, true); return; }
+  dockTab("out"); $("sVerify").disabled = $("sUpload").disabled = true;
+  clearInterval(jobPoll); jobPoll = setInterval(pollJob, 400); pollJob();
+}
+function renderLog(text) {
+  const box = $("sLog"); box.replaceChildren();
+  for (const line of text.split("\n")) {
+    const m = line.match(/DeejMixer\.ino:(\d+):(\d+):\s*(fatal error|error|warning):/);
+    if (m) box.append(el("div", {class: m[3] === "warning" ? "" : "errline", text: line, onclick: () => ed && ed.gotoLine(+m[1])}));
+    else box.append(el("div", {class: /^✔/.test(line) ? "okline" : /^✖/.test(line) ? "errline" : "", text: line}));
+  }
+  box.scrollTop = box.scrollHeight;
+}
+async function pollJob() {
+  let j; try { j = await call("/api/studio/job"); } catch { return; }
+  renderLog(j.log || "");
+  $("sJobState").textContent = j.running ? `${j.kind === "upload" ? "Uploading" : "Compiling"}… ${j.seconds}s` : j.id ? (j.ok ? `✔ ${j.kind === "upload" ? "Uploaded" : "Verified"} in ${j.seconds}s` : `✖ ${j.kind} failed`) : "";
+  if (!j.running) { clearInterval(jobPoll); $("sVerify").disabled = $("sUpload").disabled = false; if (j.id) toast(j.ok ? (j.kind === "upload" ? "Upload complete" : "Compiled successfully") : "Build failed — see Output", !j.ok); }
+}
+function dockTab(t) { document.querySelectorAll(".dock .t").forEach(b => b.classList.toggle("on", b.dataset.dt === t)); $("dt-out").style.display = t === "out" ? "" : "none"; $("dt-mon").style.display = t === "mon" ? "" : "none"; }
+document.querySelectorAll(".dock .t").forEach(b => b.onclick = () => dockTab(b.dataset.dt));
+$("sVerify").onclick = () => sBuild(false); $("sUpload").onclick = () => sBuild(true);
+$("sSave").onclick = () => sSave().then(() => toast("Sketch saved")).catch(e => toast(e.message, true));
+$("sFolder").onclick = () => cmd("open_sketch");
+$("sRevert").onclick = async () => { if (!await dialog({title: "Restore the stock firmware source?", text: "Your changes to DeejMixer.ino will be replaced with the original Deej Mixer code.", ok: "Restore", danger: true})) return;
+  const r = await call("/api/studio/sketch", {reset: true}); ed.set(r.source); sDirty = false; sModified = r.modified; sState(); };
+async function monToggle() {
+  try {
+    if (monOpen) { await call("/api/studio/monitor", {action: "stop"}); monOpen = false; }
+    else { const r = await call("/api/studio/monitor", {action: "start", since: monSeq}); monOpen = true; monSeq = r.seq; clearInterval(monPoll); monPoll = setInterval(monRead, 250); }
+  } catch (e) { toast(e.message, true); }
+  $("monToggle").textContent = monOpen ? "Close monitor" : "Open monitor";
+}
+async function monRead() {
+  if (!monOpen) { clearInterval(monPoll); return; }
+  let r; try { r = await call("/api/studio/monitor", {action: "read", since: monSeq}); } catch { return; }
+  monSeq = r.seq; if (!r.lines.length) return;
+  const box = $("monLog"); const atEnd = box.scrollTop + box.clientHeight >= box.scrollHeight - 30;
+  box.append(document.createTextNode(r.lines.join("\n") + "\n"));
+  if (box.textContent.length > 200000) box.textContent = box.textContent.slice(-150000);
+  if (atEnd) box.scrollTop = box.scrollHeight;
+}
+$("monToggle").onclick = monToggle; $("monClear").onclick = () => $("monLog").textContent = "";
+$("monSend").onclick = () => { const t = $("monText").value; if (!monOpen) { toast("Open the monitor first", true); return; } call("/api/studio/monitor", {action: "send", text: t}).then(() => $("monText").value = "").catch(e => toast(e.message, true)); };
+$("monText").onkeydown = e => { if (e.key === "Enter") $("monSend").click(); };
+document.addEventListener("keydown", e => {
+  if (page !== "studio" || !e.ctrlKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "s") { e.preventDefault(); $("sSave").click(); } else if (k === "r") { e.preventDefault(); sBuild(false); } else if (k === "u") { e.preventDefault(); sBuild(true); }
+});
+window.addEventListener("keydown", e => { if (e.ctrlKey && ["p", "f", "g", "j", "h"].includes(e.key.toLowerCase()) && !e.target.closest(".cm-editor")) e.preventDefault(); if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r" && page !== "studio")) e.preventDefault(); });
+
+// ---------- diagnostics ----------
+const PATTERNS = [[1, "All on"], [4, "Chase"], [2, "Ring only"], [3, "Logos only"], [5, "Colour cycle"], [0, "Normal"]];
+function buildDiag() {
+  const tb = $("tBtns"); tb.replaceChildren();
+  for (let i = 0; i < 6; i++) tb.append(el("div", {class: "tbox", id: "tb" + i}, el("b", {text: S.buttonNames[i]}), el("small", {text: S.buttonPins[i]}), el("div", {class: "v", id: "tbv" + i, text: "–"}), el("small", {id: "tbs" + i})));
+  const tp = $("tPots"); tp.replaceChildren();
+  for (let i = 0; i < 5; i++) tp.append(el("div", {class: "tbox", id: "tp" + i}, el("b", {text: `A${i} · ${knobName(i)}`}), el("div", {class: "v", id: "tpv" + i, text: "–"}), el("small", {id: "tps" + i})));
+  $("tPatterns").replaceChildren(seg(PATTERNS.map(([n, t]) => [String(n), t]), "1", v => cmd("pattern", {n: +v})));
+  toggle($("ringOk"), false, () => {}); toggle($("logoOk"), false, () => {});
+}
+function testResult(L) { const T = L.test; const btn = [0, 1, 2, 3, 4, 5].map(i => T.releases[i] > 0), pot = [0, 1, 2, 3, 4].map(i => T.min[i] <= 20 && T.max[i] >= 1003);
+  return {btn, pot, all: btn.every(x => x) && pot.every(x => x) && $("ringOk").classList.contains("on") && $("logoOk").classList.contains("on")}; }
+function updateDiag(L) {
+  if (!$("tb0")) return;
+  const T = L.test, R = testResult(L);
+  for (let i = 0; i < 6; i++) { const held = !!(L.mask & (1 << i)); $("tb" + i).className = "tbox" + (R.btn[i] ? " pass" : "") + (held ? " held" : "");
+    $("tbv" + i).textContent = held ? "HELD" : T.active ? T.releases[i] : "–"; $("tbs" + i).textContent = T.active ? (R.btn[i] ? "✓ passed" : "press & release") : ""; }
+  for (let i = 0; i < 5; i++) { $("tp" + i).className = "tbox" + (R.pot[i] ? " pass" : ""); $("tpv" + i).textContent = L.connected ? L.values[i] : "–";
+    $("tps" + i).textContent = T.active ? `min ${T.min[i]} · max ${T.max[i]}` + (R.pot[i] ? " ✓" : "") : ""; }
+  $("tSummary").textContent = !L.connected ? "Mixer not connected" : !T.active ? "Not running — press Start test" :
+    `${R.btn.filter(x => x).length}/6 buttons · ${R.pot.filter(x => x).length}/5 knobs` + (R.all ? " — ALL PASSED ✓" : "");
+}
+$("tStart").onclick = () => { $("ringOk").classList.remove("on"); $("logoOk").classList.remove("on"); cmd("test_start"); };
+$("tReset").onclick = () => cmd("test_reset"); $("tStop").onclick = () => cmd("test_stop");
+$("tSave").onclick = async () => { if (!live) return; const R = testResult(live);
+  try { const r = await call("/api/report", {passed: R.all, buttonsPassed: R.btn, knobsPassed: R.pot, ringConfirmed: $("ringOk").classList.contains("on"), logosConfirmed: $("logoOk").classList.contains("on"), test: live.test, port: live.port}); toast("Report saved: " + r.path); } catch (e) { toast(e.message, true); } };
+
+// ---------- settings ----------
+let portDD = null, upDD = null, upPort = "";
+function portItems(withAuto) {
+  const ports = (live && live.ports) || []; const items = withAuto ? [{value: "auto", label: "Automatic"}] : [{value: "", label: "Connected / automatic"}];
+  for (const p of ports) items.push({value: p.name, label: p.name, hint: p.desc && !p.desc.includes(p.name) ? p.desc : (p.desc || "").replace(/\s*\(COM\d+\)/, "")});
+  if (withAuto && cfg && cfg.port !== "auto" && !ports.some(p => p.name === cfg.port)) items.push({value: cfg.port, label: cfg.port + " (not present)"});
+  return items;
+}
+function buildSettings() {
+  portDD = dropdown(portItems(true), cfg.port, v => { cfg.port = v; changed(); }); $("portSel").replaceChildren(portDD.el);
+  upDD = dropdown(portItems(false), upPort, v => upPort = v); $("uploadPortSel").replaceChildren(upDD.el);
+  toggle($("startup"), S.startup, v => cmd("startup", {on: v}));
+  $("installTitle").textContent = S.installed ? "Installed" : "Install to this PC";
+  $("installHint").textContent = S.installed ? "Running from your user Programs folder" : "Copies Deej Mixer to your Programs folder and adds Start-menu and desktop shortcuts";
+  $("install").textContent = S.installed ? "Repair" : "Install";
+}
+$("refreshPorts").onclick = () => cmd("ports"); $("reconnect").onclick = () => cmd("reconnect");
+$("drivers").onclick = () => cmd("drivers"); $("openData").onclick = () => cmd("open_data");
+$("install").onclick = async () => { try { const r = await call("/api/command", {cmd: "install"}); toast(r.message); } catch (e) { toast(e.message, true); } };
+const uploadStock = async () => { if (await dialog({title: "Upload the stock firmware?", text: "Replaces the program on the Nano with the standard Deej Mixer firmware.", ok: "Upload"})) { cmd("upload", {text: upPort}); toast("Uploading firmware…"); } };
+$("uploadStock").onclick = uploadStock; $("fwBannerBtn").onclick = uploadStock;
+$("restoreDefaults").onclick = async () => { if (!await dialog({title: `Reset “${S.activeProfile}” to defaults?`, text: "Knob targets, button actions and lighting go back to the original setup.", ok: "Reset", danger: true})) return;
+  const d = await call("/api/defaults"); d.port = cfg.port; cfg = d; changed(true); };
+
+// ---------- live updates ----------
+function updateLive() {
+  const L = live; if (!L || !cfg) return;
+  $("cdot").classList.toggle("ok", L.connected);
+  $("ctitle").textContent = L.connected ? "Mixer connected" : L.uploading ? "Uploading firmware…" : L.monitor ? "Serial monitor open" : "Mixer not connected";
+  $("csub").textContent = L.connected ? `${L.port} · firmware v3` : (L.status || "");
+  $("cgame").textContent = "Steam knob: " + (L.game || "Steam client");
+  $("sPort").textContent = L.port || (L.monitorPort || "");
+  const old = (L.probeReport || []).find(r => /firmware/.test(r) && /Upload firmware/.test(r));
+  $("fwBanner").classList.toggle("hide", !old || L.connected); if (old) $("fwBannerText").textContent = "Your mixer is running " + (old.includes("ChatGPT") ? "old firmware" : "an older Deej Mixer firmware") + ". Update it to connect.";
+  for (let i = 0; i < 5; i++) {
+    const p = L.pots[i] || {}, pct = L.connected ? p.percent : 0;
+    const m = $("sm" + i); if (m) { m.classList.toggle("muted", !!p.muted || L.masterMuted); m.firstChild.style.width = pct + "%";
+      $("sp" + i).textContent = L.connected ? pct + "%" : "–"; const ss = $("ss" + i); ss.className = "pill " + (p.muted ? "bad" : p.active ? "ok" : ""); ss.textContent = p.muted ? "Muted" : p.active ? "Active" : "Idle";
+      $("sa" + i).textContent = p.sessions && p.sessions.length ? p.sessions.join(", ") : "Nothing playing"; }
+  }
+  if (sel.kind === "knob" && $("insPct")) { const p = L.pots[sel.i] || {}; $("insPct").textContent = L.connected ? p.percent + "%" : "–";
+    $("insMeter").classList.toggle("muted", !!p.muted); $("insMeter").firstChild.style.width = (L.connected ? p.percent : 0) + "%";
+    $("insMute").classList.toggle("on", !!p.muted); $("insMute").textContent = p.muted ? "Muted" : "Mute";
+    $("insApps").textContent = p.sessions && p.sessions.length ? "Controlling: " + p.sessions.join(", ") : "Nothing to control right now — the app isn't playing sound."; }
+  for (const d of Object.values(devs)) updateDevice(d, L);
+  updateDiag(L);
+  $("statusLine").textContent = L.status + (L.audioError ? " · " + L.audioError : "");
+  const pr = $("probeReport"); pr.style.display = L.connected || !L.probeReport ? "none" : ""; pr.textContent = L.probeReport ? "Last search:\n" + L.probeReport.join("\n") : "";
+  const ul = $("uploadLog"); ul.style.display = L.uploadLog ? "" : "none"; ul.textContent = L.uploadLog || "";
+  $("activity").textContent = (L.log || []).slice().reverse().join("\n");
+  const pk = JSON.stringify(L.ports || []); if (pk !== updateLive.ports) { updateLive.ports = pk; if (portDD) { portDD.setItems(portItems(true)); upDD.setItems(portItems(false)); } }
+}
+function renderAll() {
+  buildDiag(); buildSettings(); renderStrip(); renderInspector(); renderLedInspector();
+  $("idleSeg").replaceChildren(seg([["on", "Stay on"], ["dim", "Dim"], ["off", "Turn off"]], cfg.idleLogo, v => { cfg.idleLogo = v; changed(); updateLabels(); }));
+  paintSel(); updateLive();
+}
+function connectEvents() {
+  const es = new EventSource("/api/events?t=" + encodeURIComponent(TOKEN));
+  let lastApps = "";
+  es.onmessage = e => { live = JSON.parse(e.data); updateLive();
+    const apps = JSON.stringify(live.allApps || []); if (apps !== lastApps) { lastApps = apps; if (sel.kind === "knob" && !document.activeElement.closest("#inspector")) renderInspector(); } };
+  es.onerror = () => { $("ctitle").textContent = "Deej Mixer service not running"; $("cdot").classList.remove("ok"); };
+}
+
+(async () => {
+  try { S = await call("/api/state"); } catch (e) { document.body.innerHTML = "<p style='padding:40px;color:#ccc'>Open Deej Mixer from its tray icon.</p>"; return; }
+  cfg = structuredClone(S.config); live = S.live;
+  $("ver").textContent = "Deej Mixer v" + S.version;
+  devs.dev = drawDevice($("devSvg"), "dev"); devs.led = drawDevice($("ledSvg"), "led"); devs.diag = drawDevice($("diagSvg"), "diag");
+  renderProfiles(); renderAll();
+  $("savestate").textContent = "✓ All changes saved";
+  connectEvents();
+  go({test: "diag"}[location.hash.slice(1)] || location.hash.slice(1) || "device");
+})();
+</script>
+<script src="/editor.js" defer></script>
+</body>
+</html>

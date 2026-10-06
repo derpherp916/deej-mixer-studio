@@ -1,0 +1,68 @@
+DEEJ MIXER  v2.0
+================
+
+A desk mixer: 5 volume knobs, 6 programmable buttons, and LEDs that show the volume and mute state.
+
+EASIEST INSTALL
+---------------
+Run DeejMixer-Setup.exe and click through (Windows asks for permission once). It installs the
+app, adds the USB driver to Windows' driver store (Windows then loads it by itself whenever the
+mixer is plugged in), creates Start-menu/desktop shortcuts and starts Deej Mixer with Windows.
+Uninstall from Settings > Apps like any other program. Silent install: DeejMixer-Setup.exe /S
+
+QUICK START (without installing)
+--------------------------------
+1. Plug the mixer into the PC with a USB data cable.
+2. Double-click DeejMixer.exe. The Deej Mixer window opens, and a knob icon appears in the
+   taskbar notification area (bottom right, maybe under the ^ arrow).
+   - If Windows SmartScreen warns about an unknown app, click "More info" > "Run anyway".
+3. The mixer is found automatically. The header turns green: "Connected · COMx".
+   - If it never connects, open Settings and click "Install CH340 USB driver",
+     then unplug and replug the mixer.
+4. Click "Install" in Settings. This keeps Deej Mixer in your Start menu
+   and starts it quietly whenever you sign in.
+
+Closing the window is fine: the mixer keeps working in the background.
+Reopen it by clicking the tray icon. Right-click the tray icon to quit.
+
+WHAT EVERYTHING DOES (DEFAULTS)
+-------------------------------
+Facing the mixer with the big knob on the LEFT:
+
+  Big knob (A0) ........ Master volume. The LED ring shows the level.
+  Small knob 1 (A1) .... Opera              (nearest the big knob)
+  Small knob 2 (A2) .... Steam / the game you launched most recently
+  Small knob 3 (A3) .... Discord
+  Small knob 4 (A4) .... Spotify            (farthest)
+
+  Opera logo button .... mute/unmute Opera
+  Steam logo button .... mute/unmute the game (hold: open Steam)
+  Discord logo button .. mute/unmute Discord (hold: open Discord)
+  Spotify logo button .. mute/unmute Spotify (hold: open Spotify)
+  Small left button .... mute/unmute everything (master)
+  Small right button ... mute/unmute your microphone (the ring turns red while the mic is muted)
+
+Each logo LED is on at full brightness, and turns OFF when its app is muted.
+Everything goes dark when the master volume is muted.
+
+All of this can be changed in the app: click any knob or button on the Device page. Profiles
+(top right) let you keep several setups. Lighting sets LED colours; Firmware Studio lets you
+edit, compile and upload the Arduino code itself (like Arduino IDE, built in).
+
+HARDWARE TEST
+-------------
+Diagnostics -> Start test. Press every button and turn every knob all the way both ways.
+Each one turns green when it passes. Use the LED patterns ("Chase" lights one LED at a time)
+to check every light. Nothing is muted or changed while the test runs.
+
+No PC needed: hold the Opera button while plugging in USB. The ring then follows whichever
+knob you turn, and each logo LED lights while its button is held. Unplug to exit.
+
+FILES
+-----
+  DeejMixer.exe ........ the app (keep the tools and drivers folders next to it)
+  tools\ ............... AVRDUDE, used by "Upload firmware"
+  drivers\ ............. WCH CH340/CH341 USB driver (ch341\ = signed package for the driver store)
+  firmware\ ............ Arduino sketch (DeejMixer.ino) and compiled DeejMixer.hex
+  source\ .............. full source code and build notes
+  Settings and log: %APPDATA%\DeejMixer   (Settings > "Open settings folder")
