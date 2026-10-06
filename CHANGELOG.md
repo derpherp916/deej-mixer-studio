@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The installer is now one-click: double-click, approve the Windows prompt, and the app opens. Run it with `/custom` for the full wizard.
+
 ## 2.0.0 — 2026-10-06
 First release of Deej Mixer Studio.
 - Native Windows app (WebView2 window plus system tray) in the style of GG and iCUE, with a live device view, an inspector panel and profiles

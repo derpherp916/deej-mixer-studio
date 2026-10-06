@@ -5,10 +5,12 @@ A desk mixer: 5 volume knobs, 6 programmable buttons, and LEDs that show the vol
 
 EASIEST INSTALL
 ---------------
-Run DeejMixer-Setup.exe and click through (Windows asks for permission once). It installs the
+Double-click DeejMixer-Setup.exe and click Yes when Windows asks for permission. That's it: there
+are no pages to click through, and Deej Mixer opens by itself a few seconds later. It installs the
 app, adds the USB driver to Windows' driver store (Windows then loads it by itself whenever the
 mixer is plugged in), creates Start-menu/desktop shortcuts and starts Deej Mixer with Windows.
 Uninstall from Settings > Apps like any other program. Silent install: DeejMixer-Setup.exe /S
+Choose the folder or components yourself: DeejMixer-Setup.exe /custom
 
 QUICK START (without installing)
 --------------------------------

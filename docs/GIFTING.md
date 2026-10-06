@@ -13,7 +13,7 @@ The goal is that the person you give it to plugs it in, runs one installer, and 
 | Step | What they do | What happens automatically |
 |---|---|---|
 | 1 | Plug the mixer in | Windows usually installs the CH340 USB driver itself through Windows Update. |
-| 2 | Run `DeejMixer-Setup.exe` (one Windows permission prompt) | App installed; USB driver added to the Windows driver store; Start-menu entry; starts with Windows. |
+| 2 | Double-click `DeejMixer-Setup.exe` and click **Yes** (no wizard pages) | App installed and opened; USB driver added to the Windows driver store; Start-menu entry; starts with Windows. |
 | 3 | Nothing | The app finds the mixer, loads the default setup and starts controlling volume. |
 | Later | Nothing | About 45 s after each Windows start, and then daily, the app checks GitHub for a new release. A new version produces **one** quiet Windows notification, which follows Focus Assist and is never repeated for the same version. Clicking it opens Settings → Updates. |
 | Later | Click **Install update** | It downloads, checks the SHA-256 checksum and (if release signing is on) the signature, then installs silently and restarts. Settings are kept. |

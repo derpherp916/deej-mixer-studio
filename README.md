@@ -39,12 +39,12 @@
 
 ## Install
 
-1. Download **`DeejMixer-Setup-x.y.z.exe`** from [Releases](../../releases/latest) and run it.
+1. Download **`DeejMixer-Setup-x.y.z.exe`** from [Releases](../../releases/latest), double-click it and click **Yes** at the Windows prompt. That's the whole install: there's no wizard, and the app opens by itself.
    Windows SmartScreen may warn about an unknown publisher. Click *More info → Run anyway*.
 2. Plug in the mixer. Windows loads the USB driver automatically, and the app finds the mixer by itself.
 3. If the mixer is new, open **Settings → Upload stock firmware** (or **Firmware Studio → Upload**).
 
-Silent install: `DeejMixer-Setup-x.y.z.exe /S`. A portable zip is also attached to each release.
+Silent install: `/S`. Full wizard (pick the folder or components): `/custom`. A portable zip is also attached to each release.
 
 ### Updates
 

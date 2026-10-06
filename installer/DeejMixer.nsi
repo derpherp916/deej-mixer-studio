@@ -1,4 +1,6 @@
 ; Deej Mixer installer (NSIS 3). Build: makensis DeejMixer.nsi  ->  DeejMixer-Setup.exe
+; Default: one-click. Double-click, approve the Windows prompt, done (all components, app opens).
+; Full wizard (choose folder/components): DeejMixer-Setup.exe /custom
 ; Silent install:   DeejMixer-Setup.exe /S            (all components, then starts Deej Mixer)
 ; Silent uninstall: "%ProgramFiles%\Deej Mixer\Uninstall.exe" /S
 
@@ -25,6 +27,9 @@ OutFile "DeejMixer-Setup.exe"
 InstallDir "$PROGRAMFILES64\${APP}"
 InstallDirRegKey HKLM "${UNKEY}" "InstallLocation"
 BrandingText "${APP} ${VERSION}"
+ShowInstDetails hide
+
+Var Custom   ; "1" when started with /custom: show the full wizard
 
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "${APP}"
@@ -39,6 +44,8 @@ VIAddVersionKey "LegalCopyright" "Deej Mixer"
 !define MUI_WELCOMEPAGE_TITLE "Set up ${APP}"
 !define MUI_WELCOMEPAGE_TEXT "This installs the ${APP} app and the USB driver for the mixer.$\r$\n$\r$\nThe driver is added to Windows' own driver store, so Windows loads it automatically whenever the mixer is plugged in, with nothing extra running in the background.$\r$\n$\r$\nClick Next to continue."
 !define MUI_COMPONENTSPAGE_SMALLDESC
+!define MUI_INSTFILESPAGE_FINISHHEADER_TEXT "${APP} is ready"
+!define MUI_INSTFILESPAGE_FINISHHEADER_SUBTEXT "Plug in the mixer and it connects by itself."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "Start ${APP} now"
 !define MUI_FINISHPAGE_RUN_FUNCTION LaunchApp
@@ -46,10 +53,16 @@ VIAddVersionKey "LegalCopyright" "Deej Mixer"
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "Show the quick-start guide"
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipUnlessCustom
 !insertmacro MUI_PAGE_WELCOME
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipUnlessCustom
 !insertmacro MUI_PAGE_COMPONENTS
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipUnlessCustom
 !insertmacro MUI_PAGE_DIRECTORY
+!define MUI_PAGE_HEADER_TEXT "Setting up ${APP}"
+!define MUI_PAGE_HEADER_SUBTEXT "Installing the app and the USB driver. This takes a few seconds."
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_PAGE_CUSTOMFUNCTION_PRE SkipUnlessCustom
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -61,6 +74,20 @@ Function .onInit
     Abort
   ${EndIf}
   SetRegView 64
+  StrCpy $Custom "0"
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/custom" $R1
+  ${IfNot} ${Errors}
+    StrCpy $Custom "1"
+  ${EndIf}
+FunctionEnd
+
+; One-click mode skips every page except the progress bar.
+Function SkipUnlessCustom
+  ${If} $Custom != "1"
+    Abort
+  ${EndIf}
 FunctionEnd
 
 Function un.onInit
@@ -134,8 +161,12 @@ Section "Start with Windows (runs quietly in the tray)" SecStartup
 SectionEnd
 
 Section "-Finish"
+  ; Silent (updates) and one-click installs open the app straight away and close the installer.
+  ; In /custom mode the finish page offers "Start Deej Mixer now" instead.
   ${If} ${Silent}
+  ${OrIf} $Custom != "1"
     Call LaunchApp
+    SetAutoClose true
   ${EndIf}
 SectionEnd
 
